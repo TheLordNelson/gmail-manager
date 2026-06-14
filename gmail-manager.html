@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gmail Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F0F2F5; --surface: #fff; --surface2: #F7F8FA;
+    --border: #E4E7EC; --text: #111827; --text2: #6B7280; --text3: #9CA3AF;
+    --accent: #2563EB; --accent-light: #EFF6FF;
+    --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Auth */
+  #auth-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:20px; padding:24px; text-align:center; }
+  #auth-screen h1 { font-size:26px; font-weight:700; letter-spacing:-0.5px; }
+  #auth-screen p { color:var(--text2); font-size:14px; max-width:300px; line-height:1.6; }
+  .google-btn { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #dadce0; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:500; cursor:pointer; box-shadow:var(--shadow); color:#3c4043; transition:box-shadow 0.15s; }
+  .google-btn:hover { box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+  .google-btn svg { width:20px; height:20px; flex-shrink:0; }
+  .warning-note { background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; max-width:340px; font-size:12px; color:#92400E; line-height:1.6; text-align:left; }
+  .warning-note strong { display:block; margin-bottom:4px; }
+
+  /* App */
+  #app { display:none; flex:1; overflow:hidden; }
+  #app.visible { display:flex; }
+
+  /* Sidebar */
+  #sidebar { width:200px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  #sidebar-header { padding:12px; border-bottom:1px solid var(--border); }
+  #user-info { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  #user-avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; overflow:hidden; }
+  #user-avatar img { width:100%; height:100%; object-fit:cover; }
+  #user-email { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  #sign-out-btn { width:100%; padding:6px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; color:var(--text2); }
+  #labels-list { flex:1; overflow-y:auto; padding:6px 0; }
+  .label-btn { display:flex; align-items:center; gap:7px; width:100%; padding:6px 10px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; text-align:left; transition:background 0.1s; }
+  .label-btn:hover { background:var(--surface2); }
+  .label-btn.active { background:var(--accent-light); border-left-color:var(--accent); }
+  .label-btn.active .lname { color:var(--accent); font-weight:600; }
+  .lemoji { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+  .lname { font-size:12px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lcount { font-size:10px; font-weight:600; padding:1px 5px; border-radius:99px; background:var(--surface2); color:var(--text2); flex-shrink:0; }
+  .label-btn.active .lcount { background:#DBEAFE; color:var(--accent); }
+  #refresh-btn { margin:8px; padding:7px; background:var(--surface2); border:1px solid var(--border); border-radius:7px; font-size:11px; cursor:pointer; color:var(--text2); }
+  #refresh-btn:hover { background:var(--border); }
+
+  /* Thread panel */
+  #thread-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  #thread-header { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  #thread-header h2 { font-size:14px; font-weight:600; flex:1; }
+  #thread-meta { font-size:11px; color:var(--text2); }
+  #select-all-btn { padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); cursor:pointer; color:var(--text2); }
+
+  /* Action bar */
+  #action-bar { display:none; padding:7px 14px; background:#1E293B; align-items:center; gap:6px; flex-shrink:0; }
+  #action-bar.visible { display:flex; }
+  #sel-count { font-size:11px; color:#94A3B8; flex:1; }
+  .act-btn { padding:5px 10px; border-radius:5px; border:none; font-size:11px; font-weight:500; cursor:pointer; }
+  .act-btn.read { background:#1E3A5F; color:#93C5FD; }
+  .act-btn.archive { background:#334155; color:#CBD5E1; }
+  .act-btn.trash { background:#7F1D1D; color:#FCA5A5; }
+  .act-btn.relabel { background:#1A2E1A; color:#86EFAC; }
+  #relabel-sel { display:none; padding:5px 8px; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#E2E8F0; font-size:11px; cursor:pointer; }
+  #relabel-sel.visible { display:block; }
+
+  /* Thread list */
+  #thread-list { flex:1; overflow-y:auto; }
+  .t-row { display:flex; align-items:flex-start; gap:8px; padding:9px 14px; border-bottom:1px solid var(--border); background:var(--surface); transition:background 0.1s; }
+  .t-row:hover { background:var(--surface2); }
+  .t-row.selected { background:var(--accent-light); }
+  .t-row.unread .t-sender { font-weight:700; color:var(--text); }
+  .t-row.unread .t-subject { font-weight:600; color:var(--text); }
+  .t-cb { width:14px; height:14px; flex-shrink:0; margin-top:2px; accent-color:var(--accent); cursor:pointer; }
+  .t-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px; }
+  .t-dot.off { background:transparent; }
+  .t-body { flex:1; min-width:0; }
+  .t-top { display:flex; justify-content:space-between; gap:6px; }
+  .t-sender { font-size:12px; font-weight:500; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .t-date { font-size:10px; color:var(--text3); flex-shrink:0; }
+  .t-subject { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+  .t-snippet { font-size:10px; color:var(--text3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+  .t-open { padding:3px 6px; background:none; border:1px solid var(--border); border-radius:4px; font-size:10px; cursor:pointer; color:var(--text2); flex-shrink:0; margin-top:1px; }
+  .t-open:hover { background:var(--surface2); }
+
+  .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:var(--text3); font-size:13px; }
+  .empty span { font-size:36px; }
+  .loading { display:flex; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text3); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+
+  /* Detail modal */
+  #detail { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:100; align-items:center; justify-content:center; padding:16px; }
+  #detail.open { display:flex; }
+  #detail-box { background:var(--surface); border-radius:12px; width:100%; max-width:660px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.25); }
+  #detail-head { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:flex-start; }
+  #detail-subj { font-size:14px; font-weight:600; flex:1; line-height:1.4; }
+  #detail-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--text3); padding:0 2px; }
+  #detail-body { flex:1; overflow-y:auto; padding:14px 16px; }
+  .msg-card { margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .msg-head { padding:8px 12px; background:var(--surface2); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .msg-from { font-size:12px; font-weight:600; }
+  .msg-date { font-size:10px; color:var(--text3); }
+  .msg-text { padding:10px 12px; font-size:12px; line-height:1.6; color:var(--text2); white-space:pre-wrap; word-break:break-word; max-height:280px; overflow-y:auto; }
+
+  /* Toast */
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(60px); background:#1E293B; color:#E2E8F0; padding:8px 16px; border-radius:7px; font-size:12px; transition:transform 0.2s; z-index:999; pointer-events:none; white-space:nowrap; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Auth -->
+<div id="auth-screen">
+  <div style="font-size:40px">📬</div>
+  <h1>Gmail Manager</h1>
+  <p>Browse by label, select emails, and take bulk actions — powered by the Gmail API.</p>
+  <button class="google-btn" onclick="signIn()">
+    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+  <div class="warning-note">
+    <strong>⚠️ First time only</strong>
+    Google will show "This app isn't verified". Tap <strong>Advanced</strong> → <strong>Go to Gmail Manager (unsafe)</strong> to continue. This is your own app accessing your own Gmail.
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="user-info">
+        <div id="user-avatar">?</div>
+        <div id="user-email">Loading…</div>
+      </div>
+      <button id="sign-out-btn" onclick="signOut()">Sign out</button>
+    </div>
+    <div id="labels-list"></div>
+    <button id="refresh-btn" onclick="loadThreads(currentLabel)">↺ Refresh</button>
+  </div>
+  <div id="thread-panel">
+    <div id="thread-header">
+      <h2 id="label-title">Select a label</h2>
+      <span id="thread-meta"></span>
+      <button id="select-all-btn" onclick="toggleSelectAll()">Select all</button>
+    </div>
+    <div id="action-bar">
+      <span id="sel-count">0 selected</span>
+      <button class="act-btn read" onclick="bulkAction('read')">Mark read</button>
+      <button class="act-btn archive" onclick="bulkAction('archive')">Archive</button>
+      <button class="act-btn trash" onclick="bulkAction('trash')">Trash</button>
+      <button class="act-btn relabel" onclick="document.getElementById('relabel-sel').classList.toggle('visible')">Relabel ▾</button>
+      <select id="relabel-sel" onchange="bulkAction('relabel',this.value);this.classList.remove('visible');this.value=''">
+        <option value="">Move to…</option>
+      </select>
+    </div>
+    <div id="thread-list">
+      <div class="empty"><span>🏷️</span>Pick a label to get started</div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail -->
+<div id="detail" onclick="if(event.target===this)closeDetail()">
+  <div id="detail-box">
+    <div id="detail-head">
+      <div id="detail-subj">Loading…</div>
+      <button id="detail-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const CLIENT_ID = '1090553100312-ls5st7kedh3h07l1tofbcn3b7epec2h4.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+const TOKEN_KEY = 'gm_token';
+const EXPIRY_KEY = 'gm_expiry';
+
+const EMOJI = { News:'📰','Jobs Jenni':'💼','Holiday Vietnam':'🇻🇳',Holiday:'✈️',Shopping:'🛍️',Music:'🎵',Family:'👨‍👩‍👧',Bill:'💳',Finance:'💰',Technology:'💻',Health:'🏥',Work:'📊',Sailing:'⛵','Workers Comp':'⚖️','Pension UK - Aegon':'🏦','Calendar event':'📅',Friends:'👥','House Hunting':'🏠',INBOX:'📥',SENT:'📤',STARRED:'⭐',IMPORTANT:'❗',SPAM:'🚫' };
+
+let token = null;
+let currentLabel = null, currentThreads = [], selected = new Set(), allLabels = [];
+
+// ── OAuth (implicit flow — works from file://) ────────────────────────────────
+function signIn() {
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: location.href.split('?')[0].split('#')[0],
+    response_type: 'token',
+    scope: SCOPES,
+    include_granted_scopes: 'true',
+  });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+function signOut() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(EXPIRY_KEY);
+  token = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+  toast('Signed out');
+}
+
+function handleRedirect() {
+  // Check hash for token from OAuth redirect
+  const hash = new URLSearchParams(location.hash.slice(1));
+  if (hash.get('access_token')) {
+    token = hash.get('access_token');
+    const expiresIn = parseInt(hash.get('expires_in') || '3600');
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(EXPIRY_KEY, Date.now() + expiresIn * 1000);
+    history.replaceState(null, '', location.pathname);
+    startApp();
+    return;
+  }
+  // Check stored token
+  const stored = localStorage.getItem(TOKEN_KEY);
+  const expiry = parseInt(localStorage.getItem(EXPIRY_KEY) || '0');
+  if (stored && expiry > Date.now() + 60000) {
+    token = stored;
+    startApp();
+    return;
+  }
+  // Show auth screen
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+window.onload = () => handleRedirect();
+
+// ── Gmail API ─────────────────────────────────────────────────────────────────
+async function gapi(path, opts = {}) {
+  const url = 'https://gmail.googleapis.com' + path;
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  });
+  if (res.status === 401) { signOut(); throw new Error('Token expired'); }
+  if (!res.ok) throw new Error(await res.text());
+  if (res.status === 204) return {};
+  return res.json();
+}
+
+async function gpeople(path) {
+  const res = await fetch('https://www.googleapis.com/oauth2/v2' + path, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  return res.json();
+}
+
+// ── App start ─────────────────────────────────────────────────────────────────
+async function startApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  try {
+    const profile = await gpeople('/userinfo');
+    document.getElementById('user-email').textContent = profile.email || '';
+    if (profile.picture) {
+      document.getElementById('user-avatar').innerHTML = `<img src="${profile.picture}">`;
+    } else {
+      document.getElementById('user-avatar').textContent = (profile.email || '?').slice(0,2).toUpperCase();
+    }
+  } catch(e) {}
+  await loadLabels();
+}
+
+async function loadLabels() {
+  try {
+    const data = await gapi('/gmail/v1/users/me/labels');
+    allLabels = data.labels || [];
+    const sysShow = ['INBOX','STARRED','IMPORTANT'];
+    const shown = [
+      ...allLabels.filter(l => sysShow.includes(l.id)),
+      ...allLabels.filter(l => l.type === 'user').sort((a,b) => a.name.localeCompare(b.name))
+    ];
+    const list = document.getElementById('labels-list');
+    list.innerHTML = '';
+    shown.forEach(l => {
+      const name = l.name.split('/').pop();
+      const emoji = EMOJI[name] || EMOJI[l.id] || '🏷️';
+      const btn = document.createElement('button');
+      btn.className = 'label-btn';
+      btn.dataset.id = l.id;
+      btn.innerHTML = `<span class="lemoji">${emoji}</span><span class="lname">${esc(name)}</span><span class="lcount" id="cnt-${l.id}"></span>`;
+      btn.onclick = () => selectLabel(l.id, name, btn);
+      list.appendChild(btn);
+    });
+    // Relabel picker
+    const sel = document.getElementById('relabel-sel');
+    sel.innerHTML = '<option value="">Move to…</option>';
+    allLabels.filter(l => l.type === 'user').sort((a,b) => a.name.localeCompare(b.name)).forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name.split('/').pop();
+      sel.appendChild(o);
+    });
+  } catch(e) { toast('Failed to load labels'); }
+}
+
+// ── Labels & threads ──────────────────────────────────────────────────────────
+async function selectLabel(id, name, btn) {
+  currentLabel = id;
+  document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('label-title').textContent = name;
+  clearSel();
+  await loadThreads(id);
+}
+
+async function loadThreads(labelId) {
+  if (!labelId) return;
+  const list = document.getElementById('thread-list');
+  list.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+  document.getElementById('thread-meta').textContent = '';
+  try {
+    const data = await gapi(`/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`);
+    const threads = data.threads || [];
+    const cntEl = document.getElementById('cnt-' + labelId);
+    if (cntEl) cntEl.textContent = threads.length;
+    document.getElementById('thread-meta').textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''}`;
+    if (!threads.length) {
+      list.innerHTML = '<div class="empty"><span>📭</span>No emails with this label</div>';
+      return;
+    }
+    // Fetch metadata in parallel (batches of 10)
+    const results = await Promise.all(threads.map(t =>
+      gapi(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`)
+        .catch(() => ({ id: t.id, messages: [] }))
+    ));
+    currentThreads = results;
+    renderThreads(results);
+  } catch(e) {
+    list.innerHTML = '<div class="empty"><span>⚠️</span>Failed to load</div>';
+  }
+}
+
+function renderThreads(threads) {
+  const list = document.getElementById('thread-list');
+  list.innerHTML = '';
+  [...threads].sort((a,b) => {
+    const da = getDate(a), db = getDate(b);
+    return db - da;
+  }).forEach(thread => {
+    const msgs = thread.messages || [];
+    const last = msgs[msgs.length - 1] || {};
+    const h = hdrs(last);
+    const unread = (last.labelIds || []).includes('UNREAD');
+    const row = document.createElement('div');
+    row.className = `t-row${unread ? ' unread' : ''}${selected.has(thread.id) ? ' selected' : ''}`;
+    row.dataset.id = thread.id;
+    row.innerHTML = `
+      <input type="checkbox" class="t-cb" ${selected.has(thread.id) ? 'checked' : ''}>
+      <div class="t-dot${unread ? '' : ' off'}"></div>
+      <div class="t-body">
+        <div class="t-top">
+          <div class="t-sender">${esc(shortFrom(h.From || ''))}</div>
+          <div class="t-date">${esc(fmtDate(h.Date || ''))}</div>
+        </div>
+        <div class="t-subject">${esc(h.Subject || '(no subject)')}</div>
+        <div class="t-snippet">${esc(cleanSnippet(last.snippet || ''))}</div>
+      </div>
+      <button class="t-open">Open</button>`;
+    row.querySelector('.t-cb').addEventListener('change', e => { e.stopPropagation(); toggleSel(thread.id); });
+    row.querySelector('.t-open').addEventListener('click', e => { e.stopPropagation(); openThread(thread.id); });
+    row.addEventListener('click', e => { if (!e.target.classList.contains('t-cb') && !e.target.classList.contains('t-open')) toggleSel(thread.id); });
+    list.appendChild(row);
+  });
+}
+
+function hdrs(msg) {
+  return (msg.payload?.headers || []).reduce((a,h) => { a[h.name] = h.value; return a; }, {});
+}
+function getDate(thread) {
+  const msgs = thread.messages || [];
+  const last = msgs[msgs.length-1] || {};
+  const h = hdrs(last);
+  return new Date(h.Date || 0);
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+function toggleSel(id) {
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  updateSel();
+}
+function toggleSelectAll() {
+  if (selected.size === currentThreads.length) selected.clear();
+  else currentThreads.forEach(t => selected.add(t.id));
+  renderThreads(currentThreads);
+  updateSel();
+}
+function clearSel() { selected.clear(); updateSel(); }
+function updateSel() {
+  const n = selected.size;
+  document.getElementById('sel-count').textContent = `${n} selected`;
+  document.getElementById('action-bar').classList.toggle('visible', n > 0);
+  document.getElementById('select-all-btn').textContent = n === currentThreads.length && n > 0 ? 'Deselect all' : 'Select all';
+  document.querySelectorAll('.t-row').forEach(row => {
+    const cb = row.querySelector('.t-cb');
+    const s = selected.has(row.dataset.id);
+    row.classList.toggle('selected', s);
+    if (cb) cb.checked = s;
+  });
+}
+
+// ── Bulk actions ──────────────────────────────────────────────────────────────
+async function bulkAction(action, labelId) {
+  const ids = [...selected];
+  if (!ids.length) return;
+  toast(`Applying to ${ids.length} thread${ids.length > 1 ? 's' : ''}…`);
+  try {
+    await Promise.all(ids.map(id => doAction(id, action, labelId)));
+    toast(`✓ Done — ${ids.length} thread${ids.length > 1 ? 's' : ''} updated`);
+    clearSel();
+    setTimeout(() => loadThreads(currentLabel), 800);
+  } catch(e) {
+    toast('⚠️ Some actions failed');
+  }
+}
+
+async function doAction(threadId, action, labelId) {
+  const base = `/gmail/v1/users/me/threads/${threadId}`;
+  switch(action) {
+    case 'archive': return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ removeLabelIds:['INBOX'] }) });
+    case 'trash':   return gapi(base + '/trash',  { method:'POST' });
+    case 'read':    return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ removeLabelIds:['UNREAD'] }) });
+    case 'relabel': return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ addLabelIds:[labelId] }) });
+  }
+}
+
+// ── Thread detail ─────────────────────────────────────────────────────────────
+async function openThread(threadId) {
+  document.getElementById('detail-subj').textContent = 'Loading…';
+  document.getElementById('detail-body').innerHTML = '<div class="loading" style="height:100px"><div class="spinner"></div></div>';
+  document.getElementById('detail').classList.add('open');
+  try {
+    const data = await gapi(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
+    const msgs = data.messages || [];
+    const fh = hdrs(msgs[0] || {});
+    document.getElementById('detail-subj').textContent = fh.Subject || '(no subject)';
+    document.getElementById('detail-body').innerHTML = msgs.map(msg => {
+      const h = hdrs(msg);
+      const body = extractBody(msg.payload);
+      return `<div class="msg-card">
+        <div class="msg-head"><span class="msg-from">${esc(h.From || '')}</span><span class="msg-date">${esc(h.Date || '')}</span></div>
+        <div class="msg-text">${esc(body)}</div>
+      </div>`;
+    }).join('');
+    // Mark read
+    await gapi(`/gmail/v1/users/me/threads/${threadId}/modify`, { method:'POST', body: JSON.stringify({ removeLabelIds:['UNREAD'] }) });
+    const row = document.querySelector(`.t-row[data-id="${threadId}"]`);
+    if (row) { row.classList.remove('unread'); const d = row.querySelector('.t-dot'); if(d) d.classList.add('off'); }
+  } catch(e) {
+    document.getElementById('detail-body').innerHTML = '<div style="padding:16px;color:#9CA3AF;font-size:13px">Could not load message.</div>';
+  }
+}
+function closeDetail() { document.getElementById('detail').classList.remove('open'); }
+
+function extractBody(payload) {
+  if (!payload) return '';
+  if (payload.body?.data) return atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+  if (payload.parts) {
+    const plain = payload.parts.find(p => p.mimeType === 'text/plain');
+    if (plain?.body?.data) return atob(plain.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+    for (const p of payload.parts) { const s = extractBody(p); if(s) return s; }
+  }
+  return payload.snippet || '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function shortFrom(from) {
+  const name = from.replace(/<[^>]+>/,'').trim().replace(/^"(.*)"$/,'$1');
+  if (name && !name.includes('@')) return name;
+  return from.replace(/.*<|>/g,'').replace(/@.*/,'');
+}
+function fmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s); if(isNaN(d)) return s.slice(0,10);
+  const diff = Math.floor((Date.now()-d)/86400000);
+  if (diff===0) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if (diff<7)  return d.toLocaleDateString([],{weekday:'short'});
+  return d.toLocaleDateString([],{day:'numeric',month:'short'});
+}
+function cleanSnippet(s) { return s.replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/[\u200B-\u200DFEFF]/g,'').trim(); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

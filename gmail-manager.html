@@ -191,7 +191,7 @@ let currentLabel = null, currentThreads = [], selected = new Set(), allLabels = 
 function signIn() {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
-    redirect_uri: location.href.split('?')[0].split('#')[0],
+    redirect_uri: 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html',
     response_type: 'token',
     scope: SCOPES,
     include_granted_scopes: 'true',

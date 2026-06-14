@@ -5,110 +5,170 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gmail Manager</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #F0F2F5; --surface: #fff; --surface2: #F7F8FA;
-    --border: #E4E7EC; --text: #111827; --text2: #6B7280; --text3: #9CA3AF;
-    --accent: #2563EB; --accent-light: #EFF6FF;
-    --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F0F2F5; --surface: #fff; --surface2: #F7F8FA;
+  --border: #E4E7EC; --text: #111827; --text2: #6B7280; --text3: #9CA3AF;
+  --accent: #2563EB; --accent-light: #EFF6FF; --accent-dark: #1D4ED8;
+  --danger: #DC2626; --danger-light: #FEF2F2;
+  --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-size: 14px; }
 
-  /* Auth */
-  #auth-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:20px; padding:24px; text-align:center; }
-  #auth-screen h1 { font-size:26px; font-weight:700; letter-spacing:-0.5px; }
-  #auth-screen p { color:var(--text2); font-size:14px; max-width:300px; line-height:1.6; }
-  .google-btn { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #dadce0; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:500; cursor:pointer; box-shadow:var(--shadow); color:#3c4043; transition:box-shadow 0.15s; }
-  .google-btn:hover { box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-  .google-btn svg { width:20px; height:20px; flex-shrink:0; }
-  .warning-note { background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; max-width:340px; font-size:12px; color:#92400E; line-height:1.6; text-align:left; }
-  .warning-note strong { display:block; margin-bottom:4px; }
+/* ── Auth ── */
+#auth-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:20px; padding:24px; text-align:center; }
+#auth-screen h1 { font-size:26px; font-weight:700; }
+#auth-screen p { color:var(--text2); font-size:14px; max-width:300px; line-height:1.6; }
+.google-btn { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #dadce0; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:500; cursor:pointer; box-shadow:var(--shadow); color:#3c4043; transition:box-shadow 0.15s; }
+.google-btn:hover { box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.google-btn svg { width:20px; height:20px; flex-shrink:0; }
+.warn-note { background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; max-width:340px; font-size:12px; color:#92400E; line-height:1.6; text-align:left; }
+.warn-note strong { display:block; margin-bottom:4px; }
 
-  /* App */
-  #app { display:none; flex:1; overflow:hidden; }
-  #app.visible { display:flex; }
+/* ── App layout ── */
+#app { display:none; flex:1; overflow:hidden; }
+#app.visible { display:flex; height:100vh; }
 
-  /* Sidebar */
-  #sidebar { width:200px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
-  #sidebar-header { padding:12px; border-bottom:1px solid var(--border); }
-  #user-info { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-  #user-avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; overflow:hidden; }
-  #user-avatar img { width:100%; height:100%; object-fit:cover; }
-  #user-email { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-  #sign-out-btn { width:100%; padding:6px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; color:var(--text2); }
-  #labels-list { flex:1; overflow-y:auto; padding:6px 0; }
-  .label-btn { display:flex; align-items:center; gap:7px; width:100%; padding:6px 10px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; text-align:left; transition:background 0.1s; }
-  .label-btn:hover { background:var(--surface2); }
-  .label-btn.active { background:var(--accent-light); border-left-color:var(--accent); }
-  .label-btn.active .lname { color:var(--accent); font-weight:600; }
-  .lemoji { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
-  .lname { font-size:12px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .lcount { font-size:10px; font-weight:600; padding:1px 5px; border-radius:99px; background:var(--surface2); color:var(--text2); flex-shrink:0; }
-  .label-btn.active .lcount { background:#DBEAFE; color:var(--accent); }
-  #refresh-btn { margin:8px; padding:7px; background:var(--surface2); border:1px solid var(--border); border-radius:7px; font-size:11px; cursor:pointer; color:var(--text2); }
-  #refresh-btn:hover { background:var(--border); }
+/* ── Sidebar ── */
+#sidebar { width:200px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; transition:width 0.2s; }
+#sidebar.collapsed { width:44px; }
+#sidebar-header { padding:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; min-height:50px; }
+#user-avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; overflow:hidden; }
+#user-avatar img { width:100%; height:100%; object-fit:cover; }
+#user-email { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+#toggle-sidebar { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; flex-shrink:0; padding:2px 4px; }
+#sidebar-content { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+#sidebar.collapsed #sidebar-content { display:none; }
+#sidebar.collapsed #user-email { display:none; }
+#sidebar-footer { padding:8px; border-top:1px solid var(--border); }
+#sidebar.collapsed #sidebar-footer { display:none; }
+#sign-out-btn { width:100%; padding:6px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; color:var(--text2); }
+#sign-out-btn:hover { background:var(--border); }
+#refresh-labels-btn { width:100%; padding:6px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; color:var(--text2); margin-bottom:6px; }
 
-  /* Thread panel */
-  #thread-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-  #thread-header { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:center; gap:8px; flex-shrink:0; }
-  #thread-header h2 { font-size:14px; font-weight:600; flex:1; }
-  #thread-meta { font-size:11px; color:var(--text2); }
-  #select-all-btn { padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); cursor:pointer; color:var(--text2); }
+/* Sidebar label buttons */
+.view-btn { display:flex; align-items:center; gap:7px; width:100%; padding:7px 10px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; text-align:left; transition:background 0.1s; }
+.view-btn:hover { background:var(--surface2); }
+.view-btn.active { background:var(--accent-light); border-left-color:var(--accent); }
+.view-btn.active .vname { color:var(--accent); font-weight:600; }
+.vemoji { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
+.vname { font-size:12px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sidebar-divider { height:1px; background:var(--border); margin:4px 0; }
+.sidebar-section-title { font-size:10px; font-weight:600; color:var(--text3); padding:6px 10px 2px; text-transform:uppercase; letter-spacing:0.05em; }
+.lbtn { display:flex; align-items:center; gap:7px; width:100%; padding:6px 10px; background:none; border:none; border-left:3px solid transparent; cursor:pointer; text-align:left; transition:background 0.1s; }
+.lbtn:hover { background:var(--surface2); }
+.lbtn.active { background:var(--accent-light); border-left-color:var(--accent); }
+.lbtn.active .lname { color:var(--accent); font-weight:600; }
+.lemoji { font-size:12px; width:16px; text-align:center; flex-shrink:0; }
+.lname { font-size:12px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lcount { font-size:10px; font-weight:600; padding:1px 5px; border-radius:99px; background:var(--surface2); color:var(--text2); flex-shrink:0; }
+.lbtn.active .lcount { background:#DBEAFE; color:var(--accent); }
 
-  /* Action bar */
-  #action-bar { display:none; padding:7px 14px; background:#1E293B; align-items:center; gap:6px; flex-shrink:0; }
-  #action-bar.visible { display:flex; }
-  #sel-count { font-size:11px; color:#94A3B8; flex:1; }
-  .act-btn { padding:5px 10px; border-radius:5px; border:none; font-size:11px; font-weight:500; cursor:pointer; }
-  .act-btn.read { background:#1E3A5F; color:#93C5FD; }
-  .act-btn.archive { background:#334155; color:#CBD5E1; }
-  .act-btn.trash { background:#7F1D1D; color:#FCA5A5; }
-  .act-btn.relabel { background:#1A2E1A; color:#86EFAC; }
-  #relabel-sel { display:none; padding:5px 8px; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#E2E8F0; font-size:11px; cursor:pointer; }
-  #relabel-sel.visible { display:block; }
+/* ── Main area ── */
+#main { flex:1; display:flex; overflow:hidden; }
 
-  /* Thread list */
-  #thread-list { flex:1; overflow-y:auto; }
-  .t-row { display:flex; align-items:flex-start; gap:8px; padding:9px 14px; border-bottom:1px solid var(--border); background:var(--surface); transition:background 0.1s; }
-  .t-row:hover { background:var(--surface2); }
-  .t-row.selected { background:var(--accent-light); }
-  .t-row.unread .t-sender { font-weight:700; color:var(--text); }
-  .t-row.unread .t-subject { font-weight:600; color:var(--text); }
-  .t-cb { width:14px; height:14px; flex-shrink:0; margin-top:2px; accent-color:var(--accent); cursor:pointer; }
-  .t-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:5px; }
-  .t-dot.off { background:transparent; }
-  .t-body { flex:1; min-width:0; }
-  .t-top { display:flex; justify-content:space-between; gap:6px; }
-  .t-sender { font-size:12px; font-weight:500; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-  .t-date { font-size:10px; color:var(--text3); flex-shrink:0; }
-  .t-subject { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
-  .t-snippet { font-size:10px; color:var(--text3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
-  .t-open { padding:3px 6px; background:none; border:1px solid var(--border); border-radius:4px; font-size:10px; cursor:pointer; color:var(--text2); flex-shrink:0; margin-top:1px; }
-  .t-open:hover { background:var(--surface2); }
+/* ── Thread panel ── */
+#thread-panel { width:340px; display:flex; flex-direction:column; border-right:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+#thread-header { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; min-height:46px; }
+#label-title { font-size:14px; font-weight:600; flex:1; }
+#thread-meta { font-size:11px; color:var(--text2); white-space:nowrap; }
+#select-all-btn { padding:4px 8px; font-size:11px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); cursor:pointer; color:var(--text2); white-space:nowrap; }
+#select-all-btn:hover { background:var(--border); }
 
-  .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:var(--text3); font-size:13px; }
-  .empty span { font-size:36px; }
-  .loading { display:flex; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text3); }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+/* Action bar */
+#action-bar { display:none; padding:6px 10px; background:#1E293B; align-items:center; gap:5px; flex-shrink:0; flex-wrap:wrap; }
+#action-bar.visible { display:flex; }
+#sel-count { font-size:11px; color:#94A3B8; flex:1; }
+.act-btn { padding:4px 9px; border-radius:5px; border:none; font-size:11px; font-weight:500; cursor:pointer; white-space:nowrap; }
+.act-btn:hover { opacity:0.85; }
+.act-btn.read { background:#1E3A5F; color:#93C5FD; }
+.act-btn.unread { background:#1E3A5F; color:#93C5FD; }
+.act-btn.archive { background:#334155; color:#CBD5E1; }
+.act-btn.trash { background:#7F1D1D; color:#FCA5A5; }
+.act-btn.relabel { background:#1A2E1A; color:#86EFAC; }
+#relabel-sel { display:none; padding:4px 7px; border-radius:5px; border:1px solid #334155; background:#1E293B; color:#E2E8F0; font-size:11px; cursor:pointer; max-width:120px; }
+#relabel-sel.visible { display:block; }
 
-  /* Detail modal */
-  #detail { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:100; align-items:center; justify-content:center; padding:16px; }
-  #detail.open { display:flex; }
-  #detail-box { background:var(--surface); border-radius:12px; width:100%; max-width:660px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.25); }
-  #detail-head { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:flex-start; }
-  #detail-subj { font-size:14px; font-weight:600; flex:1; line-height:1.4; }
-  #detail-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--text3); padding:0 2px; }
-  #detail-body { flex:1; overflow-y:auto; padding:14px 16px; }
-  .msg-card { margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-  .msg-head { padding:8px 12px; background:var(--surface2); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
-  .msg-from { font-size:12px; font-weight:600; }
-  .msg-date { font-size:10px; color:var(--text3); }
-  .msg-text { padding:10px 12px; font-size:12px; line-height:1.6; color:var(--text2); white-space:pre-wrap; word-break:break-word; max-height:280px; overflow-y:auto; }
+/* Thread list */
+#thread-list { flex:1; overflow-y:auto; }
 
-  /* Toast */
-  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(60px); background:#1E293B; color:#E2E8F0; padding:8px 16px; border-radius:7px; font-size:12px; transition:transform 0.2s; z-index:999; pointer-events:none; white-space:nowrap; }
-  #toast.show { transform:translateX(-50%) translateY(0); }
+/* Group header */
+.group-header { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--bg); border-bottom:1px solid var(--border); cursor:pointer; position:sticky; top:0; z-index:2; user-select:none; }
+.group-header:hover { background:#E8EAF0; }
+.group-chevron { font-size:10px; color:var(--text3); transition:transform 0.2s; flex-shrink:0; }
+.group-chevron.collapsed { transform:rotate(-90deg); }
+.group-emoji { font-size:13px; }
+.group-name { font-size:12px; font-weight:600; color:var(--text); flex:1; }
+.group-count { font-size:10px; font-weight:600; padding:1px 6px; border-radius:99px; background:var(--surface); color:var(--text2); border:1px solid var(--border); }
+.group-unread { font-size:10px; color:var(--accent); font-weight:600; }
+.group-body.collapsed { display:none; }
+
+/* Thread rows */
+.t-row { display:flex; align-items:flex-start; gap:7px; padding:8px 10px; border-bottom:1px solid var(--border); cursor:pointer; background:var(--surface); transition:background 0.1s; }
+.t-row:hover { background:var(--surface2); }
+.t-row.active { background:var(--accent-light); border-left:2px solid var(--accent); }
+.t-row.selected { background:#F0F4FF; }
+.t-row.unread .t-sender { font-weight:700; color:var(--text); }
+.t-row.unread .t-subject { font-weight:600; color:var(--text); }
+.t-cb { width:13px; height:13px; flex-shrink:0; margin-top:3px; accent-color:var(--accent); cursor:pointer; }
+.t-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:6px; }
+.t-dot.off { background:transparent; }
+.t-body { flex:1; min-width:0; }
+.t-top { display:flex; justify-content:space-between; gap:4px; }
+.t-sender { font-size:12px; font-weight:500; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.t-date { font-size:10px; color:var(--text3); flex-shrink:0; }
+.t-subject { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+.t-snippet { font-size:10px; color:var(--text3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+.t-label-pill { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:var(--surface2); color:var(--text2); margin-top:2px; border:1px solid var(--border); }
+
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:var(--text3); font-size:13px; text-align:center; padding:20px; }
+.empty span { font-size:36px; }
+.loading { display:flex; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text3); }
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+
+/* ── Reading pane ── */
+#reading-pane { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--surface); }
+#reading-pane-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:var(--text3); }
+#reading-pane-empty span { font-size:48px; }
+#reading-pane-empty p { font-size:13px; }
+#reading-content { display:none; flex:1; flex-direction:column; overflow:hidden; }
+#reading-content.visible { display:flex; }
+
+#reading-header { padding:14px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+#reading-subject { font-size:16px; font-weight:700; color:var(--text); line-height:1.4; margin-bottom:8px; }
+#reading-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+#reading-from { font-size:12px; color:var(--text2); }
+#reading-date { font-size:11px; color:var(--text3); }
+#reading-actions { margin-left:auto; display:flex; gap:6px; }
+.r-act-btn { padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); font-size:11px; cursor:pointer; color:var(--text2); display:flex; align-items:center; gap:4px; }
+.r-act-btn:hover { background:var(--border); }
+.r-act-btn.danger { border-color:#FECACA; background:#FEF2F2; color:var(--danger); }
+.r-act-btn.danger:hover { background:#FEE2E2; }
+
+#reading-messages { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+.msg-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.msg-card-header { padding:10px 14px; background:var(--surface2); display:flex; align-items:baseline; gap:8px; cursor:pointer; user-select:none; }
+.msg-card-header:hover { background:#ECEEF2; }
+.msg-from { font-size:12px; font-weight:600; color:var(--text); flex:1; }
+.msg-to { font-size:11px; color:var(--text2); }
+.msg-date-full { font-size:10px; color:var(--text3); }
+.msg-collapse-btn { font-size:11px; color:var(--text3); }
+.msg-body { padding:12px 14px; font-size:12px; line-height:1.7; color:var(--text2); white-space:pre-wrap; word-break:break-word; max-height:400px; overflow-y:auto; border-top:1px solid var(--border); }
+.msg-body.hidden { display:none; }
+
+/* ── Toast ── */
+#toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(70px); background:#1E293B; color:#E2E8F0; padding:8px 16px; border-radius:7px; font-size:12px; transition:transform 0.2s; z-index:999; pointer-events:none; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+#toast.show { transform:translateX(-50%) translateY(0); }
+
+/* Responsive */
+@media (max-width: 700px) {
+  #thread-panel { width:100%; }
+  #reading-pane { display:none; }
+  #reading-pane.mobile-open { display:flex; position:fixed; inset:0; z-index:50; }
+  #back-btn { display:flex !important; }
+}
+#back-btn { display:none; padding:5px 9px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); font-size:11px; cursor:pointer; color:var(--text2); align-items:center; gap:4px; }
 </style>
 </head>
 <body>
@@ -117,60 +177,99 @@
 <div id="auth-screen">
   <div style="font-size:40px">📬</div>
   <h1>Gmail Manager</h1>
-  <p>Browse by label, select emails, and take bulk actions — powered by the Gmail API.</p>
+  <p>Browse by label, read emails, and take bulk actions — powered by the Gmail API.</p>
   <button class="google-btn" onclick="signIn()">
     <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Sign in with Google
   </button>
-  <div class="warning-note">
+  <div class="warn-note">
     <strong>⚠️ First time only</strong>
-    Google will show "This app isn't verified". Tap <strong>Advanced</strong> → <strong>Go to Gmail Manager (unsafe)</strong> to continue. This is your own app accessing your own Gmail.
+    Google may show "This app isn't verified". Tap <strong>Advanced</strong> → <strong>Go to Gmail Manager (unsafe)</strong> to continue.
   </div>
 </div>
 
 <!-- App -->
 <div id="app">
+  <!-- Sidebar -->
   <div id="sidebar">
     <div id="sidebar-header">
-      <div id="user-info">
-        <div id="user-avatar">?</div>
-        <div id="user-email">Loading…</div>
+      <div id="user-avatar">?</div>
+      <div id="user-email">Loading…</div>
+      <button id="toggle-sidebar" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+    </div>
+    <div id="sidebar-content">
+      <div style="padding:6px 0">
+        <!-- Views -->
+        <div class="sidebar-section-title">Views</div>
+        <button class="view-btn" onclick="switchView('all', 'All Inbox', this)">
+          <span class="vemoji">📥</span><span class="vname">All inbox</span>
+        </button>
+        <button class="view-btn" onclick="switchView('grouped', 'All by Label', this)">
+          <span class="vemoji">🏷️</span><span class="vname">All by label</span>
+        </button>
+        <button class="view-btn" onclick="switchView('unread', 'Unread', this)">
+          <span class="vemoji">🔵</span><span class="vname">Unread</span>
+        </button>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-title">Labels</div>
+        <div id="labels-list"></div>
       </div>
+    </div>
+    <div id="sidebar-footer">
+      <button id="label-refresh-btn" onclick="runLabelRefresh()" style="width:100%;padding:7px;background:#1E293B;border:none;border-radius:6px;font-size:11px;cursor:pointer;color:#86EFAC;margin-bottom:5px;font-weight:600;">🏷️ Run label refresh</button>
+      <button id="refresh-labels-btn" onclick="loadLabels()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px;">↺ Refresh labels</button>
       <button id="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>
-    <div id="labels-list"></div>
-    <button id="refresh-btn" onclick="loadThreads(currentLabel)">↺ Refresh</button>
   </div>
-  <div id="thread-panel">
-    <div id="thread-header">
-      <h2 id="label-title">Select a label</h2>
-      <span id="thread-meta"></span>
-      <button id="select-all-btn" onclick="toggleSelectAll()">Select all</button>
-    </div>
-    <div id="action-bar">
-      <span id="sel-count">0 selected</span>
-      <button class="act-btn read" onclick="bulkAction('read')">Mark read</button>
-      <button class="act-btn archive" onclick="bulkAction('archive')">Archive</button>
-      <button class="act-btn trash" onclick="bulkAction('trash')">Trash</button>
-      <button class="act-btn relabel" onclick="document.getElementById('relabel-sel').classList.toggle('visible')">Relabel ▾</button>
-      <select id="relabel-sel" onchange="bulkAction('relabel',this.value);this.classList.remove('visible');this.value=''">
-        <option value="">Move to…</option>
-      </select>
-    </div>
-    <div id="thread-list">
-      <div class="empty"><span>🏷️</span>Pick a label to get started</div>
-    </div>
-  </div>
-</div>
 
-<!-- Detail -->
-<div id="detail" onclick="if(event.target===this)closeDetail()">
-  <div id="detail-box">
-    <div id="detail-head">
-      <div id="detail-subj">Loading…</div>
-      <button id="detail-close" onclick="closeDetail()">✕</button>
+  <!-- Main -->
+  <div id="main">
+    <!-- Thread list panel -->
+    <div id="thread-panel">
+      <div id="thread-header">
+        <h2 id="label-title">Select a view</h2>
+        <span id="thread-meta"></span>
+        <button id="select-all-btn" onclick="toggleSelectAll()">Select all</button>
+      </div>
+      <div id="action-bar">
+        <span id="sel-count">0 selected</span>
+        <button class="act-btn read" onclick="bulkAction('read')">Read</button>
+        <button class="act-btn unread" onclick="bulkAction('unread')">Unread</button>
+        <button class="act-btn archive" onclick="bulkAction('archive')">Archive</button>
+        <button class="act-btn trash" onclick="bulkAction('trash')">Trash</button>
+        <button class="act-btn relabel" onclick="document.getElementById('relabel-sel').classList.toggle('visible')">Label ▾</button>
+        <select id="relabel-sel" onchange="bulkAction('relabel',this.value);this.classList.remove('visible');this.value=''">
+          <option value="">Add label…</option>
+        </select>
+      </div>
+      <div id="thread-list">
+        <div class="empty"><span>📬</span><p>Choose a view or label<br>from the sidebar</p></div>
+      </div>
     </div>
-    <div id="detail-body"></div>
+
+    <!-- Reading pane -->
+    <div id="reading-pane">
+      <div id="reading-pane-empty">
+        <span>✉️</span>
+        <p>Select an email to read it</p>
+      </div>
+      <div id="reading-content">
+        <div id="reading-header">
+          <div id="reading-subject"></div>
+          <div id="reading-meta">
+            <button id="back-btn" onclick="closeReading()">← Back</button>
+            <div id="reading-from"></div>
+            <div id="reading-date"></div>
+            <div id="reading-actions">
+              <button class="r-act-btn" onclick="replyCurrentThread()">↩ Reply</button>
+              <button class="r-act-btn" onclick="archiveCurrentThread()">Archive</button>
+              <button class="r-act-btn danger" onclick="trashCurrentThread()">🗑 Trash</button>
+            </div>
+          </div>
+        </div>
+        <div id="reading-messages"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -178,320 +277,619 @@
 
 <script>
 const CLIENT_ID = '1090553100312-ls5st7kedh3h07l1tofbcn3b7epec2h4.apps.googleusercontent.com';
+const REDIRECT_URI = 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
-const TOKEN_KEY = 'gm_token';
-const EXPIRY_KEY = 'gm_expiry';
 
 const EMOJI = { News:'📰','Jobs Jenni':'💼','Holiday Vietnam':'🇻🇳',Holiday:'✈️',Shopping:'🛍️',Music:'🎵',Family:'👨‍👩‍👧',Bill:'💳',Finance:'💰',Technology:'💻',Health:'🏥',Work:'📊',Sailing:'⛵','Workers Comp':'⚖️','Pension UK - Aegon':'🏦','Calendar event':'📅',Friends:'👥','House Hunting':'🏠',INBOX:'📥',SENT:'📤',STARRED:'⭐',IMPORTANT:'❗',SPAM:'🚫' };
 
 let token = null;
-let currentLabel = null, currentThreads = [], selected = new Set(), allLabels = [];
+let currentView = null, currentLabelId = null;
+let currentThreads = [], selected = new Set(), allLabels = [];
+let collapsedGroups = new Set();
+let activeThreadId = null;
 
-// ── OAuth (implicit flow — works from file://) ────────────────────────────────
+// ── OAuth ─────────────────────────────────────────────────────────────────────
 function signIn() {
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html',
-    response_type: 'token',
-    scope: SCOPES,
-    include_granted_scopes: 'true',
-  });
-  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+  const p = new URLSearchParams({ client_id:CLIENT_ID, redirect_uri:REDIRECT_URI, response_type:'token', scope:SCOPES, include_granted_scopes:'true' });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
 }
-
 function signOut() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(EXPIRY_KEY);
+  localStorage.removeItem('gm_tok'); localStorage.removeItem('gm_exp');
   token = null;
   document.getElementById('app').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
-  toast('Signed out');
 }
-
-function handleRedirect() {
-  // Check hash for token from OAuth redirect
+window.onload = () => {
   const hash = new URLSearchParams(location.hash.slice(1));
   if (hash.get('access_token')) {
     token = hash.get('access_token');
-    const expiresIn = parseInt(hash.get('expires_in') || '3600');
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(EXPIRY_KEY, Date.now() + expiresIn * 1000);
-    history.replaceState(null, '', location.pathname);
-    startApp();
-    return;
+    localStorage.setItem('gm_tok', token);
+    localStorage.setItem('gm_exp', Date.now() + parseInt(hash.get('expires_in')||3600)*1000);
+    history.replaceState(null,'',location.pathname);
+    startApp(); return;
   }
-  // Check stored token
-  const stored = localStorage.getItem(TOKEN_KEY);
-  const expiry = parseInt(localStorage.getItem(EXPIRY_KEY) || '0');
-  if (stored && expiry > Date.now() + 60000) {
-    token = stored;
-    startApp();
-    return;
-  }
-  // Show auth screen
+  const stored = localStorage.getItem('gm_tok');
+  const exp = parseInt(localStorage.getItem('gm_exp')||0);
+  if (stored && exp > Date.now()+60000) { token = stored; startApp(); return; }
   document.getElementById('auth-screen').style.display = 'flex';
-}
+};
 
-window.onload = () => handleRedirect();
-
-// ── Gmail API ─────────────────────────────────────────────────────────────────
-async function gapi(path, opts = {}) {
-  const url = 'https://gmail.googleapis.com' + path;
-  const res = await fetch(url, {
-    ...opts,
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) }
-  });
-  if (res.status === 401) { signOut(); throw new Error('Token expired'); }
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(path, opts={}) {
+  const url = path.startsWith('http') ? path : 'https://gmail.googleapis.com' + path;
+  const res = await fetch(url, { ...opts, headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json', ...(opts.headers||{}) } });
+  if (res.status===401) { signOut(); throw new Error('Expired'); }
   if (!res.ok) throw new Error(await res.text());
-  if (res.status === 204) return {};
+  if (res.status===204||res.headers.get('content-length')==='0') return {};
   return res.json();
 }
 
-async function gpeople(path) {
-  const res = await fetch('https://www.googleapis.com/oauth2/v2' + path, {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  return res.json();
-}
-
-// ── App start ─────────────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────────────────
 async function startApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   try {
-    const profile = await gpeople('/userinfo');
-    document.getElementById('user-email').textContent = profile.email || '';
-    if (profile.picture) {
-      document.getElementById('user-avatar').innerHTML = `<img src="${profile.picture}">`;
-    } else {
-      document.getElementById('user-avatar').textContent = (profile.email || '?').slice(0,2).toUpperCase();
-    }
-  } catch(e) {}
+    const p = await api('https://www.googleapis.com/oauth2/v2/userinfo');
+    document.getElementById('user-email').textContent = p.email||'';
+    document.getElementById('user-avatar').innerHTML = p.picture ? `<img src="${p.picture}">` : (p.email||'?').slice(0,2).toUpperCase();
+  } catch(e){}
   await loadLabels();
 }
 
 async function loadLabels() {
   try {
-    const data = await gapi('/gmail/v1/users/me/labels');
-    allLabels = data.labels || [];
-    const sysShow = ['INBOX','STARRED','IMPORTANT'];
-    const shown = [
-      ...allLabels.filter(l => sysShow.includes(l.id)),
-      ...allLabels.filter(l => l.type === 'user').sort((a,b) => a.name.localeCompare(b.name))
-    ];
+    const data = await api('/gmail/v1/users/me/labels');
+    allLabels = data.labels||[];
+    const sys = ['INBOX','STARRED','IMPORTANT','SENT','SPAM','TRASH'];
+    const userLabels = allLabels.filter(l=>l.type==='user').sort((a,b)=>a.name.localeCompare(b.name));
     const list = document.getElementById('labels-list');
     list.innerHTML = '';
-    shown.forEach(l => {
+    userLabels.forEach(l => {
       const name = l.name.split('/').pop();
-      const emoji = EMOJI[name] || EMOJI[l.id] || '🏷️';
+      const emoji = EMOJI[name]||'🏷️';
       const btn = document.createElement('button');
-      btn.className = 'label-btn';
-      btn.dataset.id = l.id;
-      btn.innerHTML = `<span class="lemoji">${emoji}</span><span class="lname">${esc(name)}</span><span class="lcount" id="cnt-${l.id}"></span>`;
-      btn.onclick = () => selectLabel(l.id, name, btn);
+      btn.className='lbtn'; btn.dataset.id=l.id;
+      btn.innerHTML=`<span class="lemoji">${emoji}</span><span class="lname">${esc(name)}</span><span class="lcount" id="cnt-${l.id}"></span>`;
+      btn.onclick=()=>selectLabel(l.id, name, btn);
       list.appendChild(btn);
     });
     // Relabel picker
     const sel = document.getElementById('relabel-sel');
-    sel.innerHTML = '<option value="">Move to…</option>';
-    allLabels.filter(l => l.type === 'user').sort((a,b) => a.name.localeCompare(b.name)).forEach(l => {
-      const o = document.createElement('option');
-      o.value = l.id; o.textContent = l.name.split('/').pop();
-      sel.appendChild(o);
+    sel.innerHTML='<option value="">Add label…</option>';
+    userLabels.forEach(l=>{
+      const o=document.createElement('option'); o.value=l.id; o.textContent=l.name.split('/').pop(); sel.appendChild(o);
     });
-  } catch(e) { toast('Failed to load labels'); }
+  } catch(e){ toast('Failed to load labels'); }
 }
 
-// ── Labels & threads ──────────────────────────────────────────────────────────
-async function selectLabel(id, name, btn) {
-  currentLabel = id;
-  document.querySelectorAll('.label-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('label-title').textContent = name;
-  clearSel();
-  await loadThreads(id);
+// ── Views ─────────────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
 }
 
-async function loadThreads(labelId) {
-  if (!labelId) return;
-  const list = document.getElementById('thread-list');
-  list.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
-  document.getElementById('thread-meta').textContent = '';
+function switchView(view, title, btn) {
+  currentView=view; currentLabelId=null;
+  document.querySelectorAll('.view-btn,.lbtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('label-title').textContent=title;
+  clearSel(); closeReading();
+  if(view==='all') loadAllInbox();
+  else if(view==='grouped') loadGroupedInbox();
+  else if(view==='unread') loadUnread();
+}
+
+function selectLabel(id, name, btn) {
+  currentLabelId=id; currentView='label';
+  document.querySelectorAll('.view-btn,.lbtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('label-title').textContent=name;
+  clearSel(); closeReading();
+  loadLabelThreads(id);
+}
+
+// ── Thread loading ────────────────────────────────────────────────────────────
+function setLoading() {
+  document.getElementById('thread-list').innerHTML='<div class="loading"><div class="spinner"></div>Loading…</div>';
+  document.getElementById('thread-meta').textContent='';
+}
+
+async function fetchThreads(query, maxResults=50) {
+  const data = await api(`/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
+  const threads = data.threads||[];
+  const detailed = await Promise.all(threads.map(t=>
+    api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
+  ));
+  return detailed;
+}
+
+async function loadAllInbox() {
+  setLoading();
   try {
-    const data = await gapi(`/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`);
-    const threads = data.threads || [];
-    const cntEl = document.getElementById('cnt-' + labelId);
-    if (cntEl) cntEl.textContent = threads.length;
-    document.getElementById('thread-meta').textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''}`;
-    if (!threads.length) {
-      list.innerHTML = '<div class="empty"><span>📭</span>No emails with this label</div>';
-      return;
-    }
-    // Fetch metadata in parallel (batches of 10)
-    const results = await Promise.all(threads.map(t =>
-      gapi(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`)
-        .catch(() => ({ id: t.id, messages: [] }))
+    currentThreads = await fetchThreads('in:inbox');
+    document.getElementById('thread-meta').textContent=`${currentThreads.length} threads`;
+    renderFlat(currentThreads);
+  } catch(e){ showEmpty('Failed to load inbox'); }
+}
+
+async function loadUnread() {
+  setLoading();
+  try {
+    currentThreads = await fetchThreads('in:inbox is:unread');
+    document.getElementById('thread-meta').textContent=`${currentThreads.length} unread`;
+    renderFlat(currentThreads);
+  } catch(e){ showEmpty('Failed to load'); }
+}
+
+async function loadLabelThreads(labelId) {
+  setLoading();
+  try {
+    const data = await api(`/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`);
+    const threads = data.threads||[];
+    const cnt = document.getElementById('cnt-'+labelId);
+    if(cnt) cnt.textContent=threads.length;
+    document.getElementById('thread-meta').textContent=`${threads.length} threads`;
+    if(!threads.length){ showEmpty('No emails with this label'); return; }
+    currentThreads = await Promise.all(threads.map(t=>
+      api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
     ));
-    currentThreads = results;
-    renderThreads(results);
-  } catch(e) {
-    list.innerHTML = '<div class="empty"><span>⚠️</span>Failed to load</div>';
+    renderFlat(currentThreads);
+  } catch(e){ showEmpty('Failed to load'); }
+}
+
+async function loadGroupedInbox() {
+  setLoading();
+  try {
+    // Fetch all inbox threads
+    const data = await api(`/gmail/v1/users/me/threads?labelIds=INBOX&maxResults=50`);
+    const threads = data.threads||[];
+    document.getElementById('thread-meta').textContent=`${threads.length} threads`;
+    if(!threads.length){ showEmpty('Inbox is empty'); return; }
+    currentThreads = await Promise.all(threads.map(t=>
+      api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
+    ));
+    renderGrouped(currentThreads);
+  } catch(e){ showEmpty('Failed to load'); }
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+function renderFlat(threads) {
+  const list = document.getElementById('thread-list');
+  list.innerHTML='';
+  const sorted = [...threads].sort((a,b)=>getDate(b)-getDate(a));
+  sorted.forEach(t=>list.appendChild(makeThreadRow(t)));
+}
+
+function renderGrouped(threads) {
+  const list = document.getElementById('thread-list');
+  list.innerHTML='';
+  // Group by user label
+  const groups = {}; // labelId -> {name, emoji, threads[]}
+  const noLabel = [];
+  threads.forEach(t=>{
+    const msgs = t.messages||[];
+    const last = msgs[msgs.length-1]||{};
+    const lblIds = last.labelIds||[];
+    const userLbls = lblIds.filter(id=>!['INBOX','UNREAD','IMPORTANT','CATEGORY_PERSONAL','CATEGORY_UPDATES','CATEGORY_PROMOTIONS','CATEGORY_SOCIAL','CATEGORY_FORUMS','STARRED','SENT'].includes(id));
+    if(!userLbls.length){ noLabel.push(t); return; }
+    userLbls.forEach(lid=>{
+      if(!groups[lid]){
+        const lbl = allLabels.find(l=>l.id===lid);
+        const name = lbl ? lbl.name.split('/').pop() : lid;
+        groups[lid]={name, emoji:EMOJI[name]||'🏷️', threads:[]};
+      }
+      if(!groups[lid].threads.find(x=>x.id===t.id)) groups[lid].threads.push(t);
+    });
+  });
+  // Sort groups by name
+  const sortedGroups = Object.entries(groups).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  sortedGroups.forEach(([lid,grp])=>{
+    list.appendChild(makeGroupSection(lid, grp.name, grp.emoji, grp.threads));
+  });
+  if(noLabel.length){
+    list.appendChild(makeGroupSection('__none','Unlabelled','📭',noLabel));
   }
 }
 
-function renderThreads(threads) {
-  const list = document.getElementById('thread-list');
-  list.innerHTML = '';
-  [...threads].sort((a,b) => {
-    const da = getDate(a), db = getDate(b);
-    return db - da;
-  }).forEach(thread => {
-    const msgs = thread.messages || [];
-    const last = msgs[msgs.length - 1] || {};
-    const h = hdrs(last);
-    const unread = (last.labelIds || []).includes('UNREAD');
-    const row = document.createElement('div');
-    row.className = `t-row${unread ? ' unread' : ''}${selected.has(thread.id) ? ' selected' : ''}`;
-    row.dataset.id = thread.id;
-    row.innerHTML = `
-      <input type="checkbox" class="t-cb" ${selected.has(thread.id) ? 'checked' : ''}>
-      <div class="t-dot${unread ? '' : ' off'}"></div>
-      <div class="t-body">
-        <div class="t-top">
-          <div class="t-sender">${esc(shortFrom(h.From || ''))}</div>
-          <div class="t-date">${esc(fmtDate(h.Date || ''))}</div>
-        </div>
-        <div class="t-subject">${esc(h.Subject || '(no subject)')}</div>
-        <div class="t-snippet">${esc(cleanSnippet(last.snippet || ''))}</div>
-      </div>
-      <button class="t-open">Open</button>`;
-    row.querySelector('.t-cb').addEventListener('change', e => { e.stopPropagation(); toggleSel(thread.id); });
-    row.querySelector('.t-open').addEventListener('click', e => { e.stopPropagation(); openThread(thread.id); });
-    row.addEventListener('click', e => { if (!e.target.classList.contains('t-cb') && !e.target.classList.contains('t-open')) toggleSel(thread.id); });
-    list.appendChild(row);
-  });
+function makeGroupSection(groupId, name, emoji, threads) {
+  const isCollapsed = collapsedGroups.has(groupId);
+  const unread = threads.filter(t=>{const l=t.messages?.[t.messages.length-1]; return (l?.labelIds||[]).includes('UNREAD');}).length;
+  const wrap = document.createElement('div');
+  wrap.className='group-section';
+  const hdr = document.createElement('div');
+  hdr.className='group-header';
+  hdr.innerHTML=`
+    <span class="group-chevron${isCollapsed?' collapsed':''}">▼</span>
+    <span class="group-emoji">${emoji}</span>
+    <span class="group-name">${esc(name)}</span>
+    ${unread>0?`<span class="group-unread">${unread} unread</span>`:''}
+    <span class="group-count">${threads.length}</span>`;
+  const body = document.createElement('div');
+  body.className='group-body'+(isCollapsed?' collapsed':'');
+  hdr.onclick=()=>{
+    const collapsed=body.classList.toggle('collapsed');
+    hdr.querySelector('.group-chevron').classList.toggle('collapsed',collapsed);
+    if(collapsed) collapsedGroups.add(groupId); else collapsedGroups.delete(groupId);
+  };
+  threads.sort((a,b)=>getDate(b)-getDate(a)).forEach(t=>body.appendChild(makeThreadRow(t,true)));
+  wrap.appendChild(hdr); wrap.appendChild(body);
+  return wrap;
 }
 
-function hdrs(msg) {
-  return (msg.payload?.headers || []).reduce((a,h) => { a[h.name] = h.value; return a; }, {});
-}
-function getDate(thread) {
-  const msgs = thread.messages || [];
-  const last = msgs[msgs.length-1] || {};
+function makeThreadRow(thread, showLabel=false) {
+  const msgs = thread.messages||[];
+  const last = msgs[msgs.length-1]||{};
   const h = hdrs(last);
-  return new Date(h.Date || 0);
+  const unread = (last.labelIds||[]).includes('UNREAD');
+  const isActive = activeThreadId===thread.id;
+  const isSel = selected.has(thread.id);
+  const row = document.createElement('div');
+  row.className=`t-row${unread?' unread':''}${isActive?' active':''}${isSel?' selected':''}`;
+  row.dataset.id=thread.id;
+
+  // Label pill for flat views
+  let labelPill='';
+  if(showLabel===false && currentView!=='label'){
+    const lblIds=(last.labelIds||[]).filter(id=>allLabels.find(l=>l.id===id&&l.type==='user'));
+    if(lblIds.length){
+      const lbl=allLabels.find(l=>l.id===lblIds[0]);
+      if(lbl) labelPill=`<div class="t-label-pill">${esc(lbl.name.split('/').pop())}</div>`;
+    }
+  }
+
+  row.innerHTML=`
+    <input type="checkbox" class="t-cb" ${isSel?'checked':''}>
+    <div class="t-dot${unread?'':' off'}"></div>
+    <div class="t-body">
+      <div class="t-top">
+        <div class="t-sender">${esc(shortFrom(h.From||''))}</div>
+        <div class="t-date">${esc(fmtDate(h.Date||''))}</div>
+      </div>
+      <div class="t-subject">${esc(h.Subject||'(no subject)')}</div>
+      <div class="t-snippet">${esc(clean(last.snippet||''))}</div>
+      ${labelPill}
+    </div>`;
+  row.querySelector('.t-cb').addEventListener('change', e=>{ e.stopPropagation(); toggleSel(thread.id); });
+  row.addEventListener('click', e=>{ if(!e.target.classList.contains('t-cb')) openThread(thread.id, h); });
+  return row;
+}
+
+function showEmpty(msg) {
+  document.getElementById('thread-list').innerHTML=`<div class="empty"><span>📭</span><p>${msg}</p></div>`;
 }
 
 // ── Selection ─────────────────────────────────────────────────────────────────
-function toggleSel(id) {
-  if (selected.has(id)) selected.delete(id); else selected.add(id);
-  updateSel();
-}
+function toggleSel(id) { if(selected.has(id)) selected.delete(id); else selected.add(id); updateSel(); }
 function toggleSelectAll() {
-  if (selected.size === currentThreads.length) selected.clear();
-  else currentThreads.forEach(t => selected.add(t.id));
-  renderThreads(currentThreads);
-  updateSel();
+  if(selected.size===currentThreads.length) selected.clear();
+  else currentThreads.forEach(t=>selected.add(t.id));
+  refreshRows(); updateSel();
 }
 function clearSel() { selected.clear(); updateSel(); }
 function updateSel() {
-  const n = selected.size;
-  document.getElementById('sel-count').textContent = `${n} selected`;
-  document.getElementById('action-bar').classList.toggle('visible', n > 0);
-  document.getElementById('select-all-btn').textContent = n === currentThreads.length && n > 0 ? 'Deselect all' : 'Select all';
-  document.querySelectorAll('.t-row').forEach(row => {
-    const cb = row.querySelector('.t-cb');
-    const s = selected.has(row.dataset.id);
-    row.classList.toggle('selected', s);
-    if (cb) cb.checked = s;
+  const n=selected.size;
+  document.getElementById('sel-count').textContent=`${n} selected`;
+  document.getElementById('action-bar').classList.toggle('visible',n>0);
+  document.getElementById('select-all-btn').textContent=n===currentThreads.length&&n>0?'Deselect all':'Select all';
+  refreshRows();
+}
+function refreshRows() {
+  document.querySelectorAll('.t-row').forEach(row=>{
+    const cb=row.querySelector('.t-cb');
+    const sel=selected.has(row.dataset.id);
+    const active=activeThreadId===row.dataset.id;
+    row.classList.toggle('selected',sel&&!active);
+    row.classList.toggle('active',active);
+    if(cb) cb.checked=sel;
   });
 }
 
 // ── Bulk actions ──────────────────────────────────────────────────────────────
 async function bulkAction(action, labelId) {
-  const ids = [...selected];
-  if (!ids.length) return;
-  toast(`Applying to ${ids.length} thread${ids.length > 1 ? 's' : ''}…`);
+  const ids=[...selected]; if(!ids.length) return;
+  document.getElementById('relabel-sel').classList.remove('visible');
+  toast(`Applying to ${ids.length} thread${ids.length>1?'s':''}…`);
   try {
-    await Promise.all(ids.map(id => doAction(id, action, labelId)));
-    toast(`✓ Done — ${ids.length} thread${ids.length > 1 ? 's' : ''} updated`);
+    await Promise.all(ids.map(id=>doAction(id,action,labelId)));
+    toast(`✓ ${ids.length} thread${ids.length>1?'s':''} updated`);
     clearSel();
-    setTimeout(() => loadThreads(currentLabel), 800);
-  } catch(e) {
-    toast('⚠️ Some actions failed');
-  }
+    setTimeout(()=>refreshCurrentView(), 800);
+  } catch(e){ toast('⚠️ Some actions failed'); }
 }
-
 async function doAction(threadId, action, labelId) {
-  const base = `/gmail/v1/users/me/threads/${threadId}`;
-  switch(action) {
-    case 'archive': return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ removeLabelIds:['INBOX'] }) });
-    case 'trash':   return gapi(base + '/trash',  { method:'POST' });
-    case 'read':    return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ removeLabelIds:['UNREAD'] }) });
-    case 'relabel': return gapi(base + '/modify', { method:'POST', body: JSON.stringify({ addLabelIds:[labelId] }) });
-  }
+  const base=`/gmail/v1/users/me/threads/${threadId}`;
+  if(action==='archive') return api(base+'/modify',{method:'POST',body:JSON.stringify({removeLabelIds:['INBOX']})});
+  if(action==='trash')   return api(base+'/trash',{method:'POST'});
+  if(action==='read')    return api(base+'/modify',{method:'POST',body:JSON.stringify({removeLabelIds:['UNREAD']})});
+  if(action==='unread')  return api(base+'/modify',{method:'POST',body:JSON.stringify({addLabelIds:['UNREAD']})});
+  if(action==='relabel') return api(base+'/modify',{method:'POST',body:JSON.stringify({addLabelIds:[labelId]})});
+}
+function refreshCurrentView() {
+  if(currentView==='all') loadAllInbox();
+  else if(currentView==='grouped') loadGroupedInbox();
+  else if(currentView==='unread') loadUnread();
+  else if(currentView==='label'&&currentLabelId) loadLabelThreads(currentLabelId);
 }
 
-// ── Thread detail ─────────────────────────────────────────────────────────────
-async function openThread(threadId) {
-  document.getElementById('detail-subj').textContent = 'Loading…';
-  document.getElementById('detail-body').innerHTML = '<div class="loading" style="height:100px"><div class="spinner"></div></div>';
-  document.getElementById('detail').classList.add('open');
+// ── Reading pane ──────────────────────────────────────────────────────────────
+async function openThread(threadId, basicHeaders) {
+  activeThreadId=threadId; refreshRows();
+  document.getElementById('reading-pane-empty').style.display='none';
+  document.getElementById('reading-content').classList.add('visible');
+  document.getElementById('reading-messages').innerHTML='<div class="loading" style="height:80px"><div class="spinner"></div></div>';
+  document.getElementById('reading-subject').textContent=basicHeaders?.Subject||'Loading…';
+  document.getElementById('reading-from').textContent='';
+  document.getElementById('reading-date').textContent='';
+  // Mobile: open reading pane
+  document.getElementById('reading-pane').classList.add('mobile-open');
   try {
-    const data = await gapi(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
-    const msgs = data.messages || [];
-    const fh = hdrs(msgs[0] || {});
-    document.getElementById('detail-subj').textContent = fh.Subject || '(no subject)';
-    document.getElementById('detail-body').innerHTML = msgs.map(msg => {
-      const h = hdrs(msg);
-      const body = extractBody(msg.payload);
-      return `<div class="msg-card">
-        <div class="msg-head"><span class="msg-from">${esc(h.From || '')}</span><span class="msg-date">${esc(h.Date || '')}</span></div>
-        <div class="msg-text">${esc(body)}</div>
-      </div>`;
-    }).join('');
-    // Mark read
-    await gapi(`/gmail/v1/users/me/threads/${threadId}/modify`, { method:'POST', body: JSON.stringify({ removeLabelIds:['UNREAD'] }) });
-    const row = document.querySelector(`.t-row[data-id="${threadId}"]`);
-    if (row) { row.classList.remove('unread'); const d = row.querySelector('.t-dot'); if(d) d.classList.add('off'); }
-  } catch(e) {
-    document.getElementById('detail-body').innerHTML = '<div style="padding:16px;color:#9CA3AF;font-size:13px">Could not load message.</div>';
+    const data = await api(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
+    const msgs = data.messages||[];
+    const firstH = hdrs(msgs[0]||{});
+    document.getElementById('reading-subject').textContent=firstH.Subject||'(no subject)';
+    document.getElementById('reading-from').textContent=firstH.From||'';
+    document.getElementById('reading-date').textContent=firstH.Date||'';
+    const container=document.getElementById('reading-messages');
+    container.innerHTML='';
+    msgs.forEach((msg,i)=>{
+      const h=hdrs(msg);
+      const body=extractBody(msg.payload);
+      const card=document.createElement('div'); card.className='msg-card';
+      const isLast=i===msgs.length-1;
+      card.innerHTML=`
+        <div class="msg-card-header" onclick="toggleMsgBody(this)">
+          <span class="msg-from">${esc(h.From||'')}</span>
+          <span class="msg-to">to ${esc(h.To||'me')}</span>
+          <span class="msg-date-full">${esc(h.Date||'')}</span>
+          <span class="msg-collapse-btn">${isLast?'▲':'▼'}</span>
+        </div>
+        <div class="msg-body${isLast?'':' hidden'}">${esc(body)||'<em style="color:#9CA3AF">No text content</em>'}</div>`;
+      container.appendChild(card);
+    });
+    // Mark as read
+    await api(`/gmail/v1/users/me/threads/${threadId}/modify`,{method:'POST',body:JSON.stringify({removeLabelIds:['UNREAD']})});
+    const row=document.querySelector(`.t-row[data-id="${threadId}"]`);
+    if(row){ row.classList.remove('unread'); const d=row.querySelector('.t-dot'); if(d)d.classList.add('off'); }
+  } catch(e){
+    document.getElementById('reading-messages').innerHTML='<div style="padding:16px;color:#9CA3AF;font-size:13px">Could not load message body.</div>';
   }
 }
-function closeDetail() { document.getElementById('detail').classList.remove('open'); }
 
-function extractBody(payload) {
-  if (!payload) return '';
-  if (payload.body?.data) return atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/'));
-  if (payload.parts) {
-    const plain = payload.parts.find(p => p.mimeType === 'text/plain');
-    if (plain?.body?.data) return atob(plain.body.data.replace(/-/g,'+').replace(/_/g,'/'));
-    for (const p of payload.parts) { const s = extractBody(p); if(s) return s; }
-  }
-  return payload.snippet || '';
+function toggleMsgBody(headerEl) {
+  const body=headerEl.nextElementSibling;
+  const btn=headerEl.querySelector('.msg-collapse-btn');
+  body.classList.toggle('hidden');
+  btn.textContent=body.classList.contains('hidden')?'▼':'▲';
+}
+
+function closeReading() {
+  activeThreadId=null;
+  document.getElementById('reading-pane-empty').style.display='flex';
+  document.getElementById('reading-content').classList.remove('visible');
+  document.getElementById('reading-pane').classList.remove('mobile-open');
+  refreshRows();
+}
+
+async function archiveCurrentThread() {
+  if(!activeThreadId) return;
+  await doAction(activeThreadId,'archive');
+  toast('✓ Archived'); closeReading();
+  setTimeout(()=>refreshCurrentView(),500);
+}
+async function trashCurrentThread() {
+  if(!activeThreadId) return;
+  await doAction(activeThreadId,'trash');
+  toast('✓ Moved to trash'); closeReading();
+  setTimeout(()=>refreshCurrentView(),500);
+}
+function replyCurrentThread() {
+  toast('Reply — coming soon!');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function shortFrom(from) {
-  const name = from.replace(/<[^>]+>/,'').trim().replace(/^"(.*)"$/,'$1');
-  if (name && !name.includes('@')) return name;
+function hdrs(msg){ return (msg.payload?.headers||[]).reduce((a,h)=>{a[h.name]=h.value;return a;},{}); }
+function getDate(t){ const m=(t.messages||[]); const l=m[m.length-1]||{}; return new Date(hdrs(l).Date||0); }
+function shortFrom(from){
+  const name=from.replace(/<[^>]+>/,'').trim().replace(/^"(.*)"$/,'$1');
+  if(name&&!name.includes('@')) return name;
   return from.replace(/.*<|>/g,'').replace(/@.*/,'');
 }
-function fmtDate(s) {
-  if (!s) return '';
-  const d = new Date(s); if(isNaN(d)) return s.slice(0,10);
-  const diff = Math.floor((Date.now()-d)/86400000);
-  if (diff===0) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  if (diff<7)  return d.toLocaleDateString([],{weekday:'short'});
-  return d.toLocaleDateString([],{day:'numeric',month:'short'});
+function fmtDate(s){
+  if(!s) return '';
+  const d=new Date(s); if(isNaN(d)) return s.slice(0,10);
+  const diff=Math.floor((Date.now()-d)/86400000);
+  if(diff===0) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if(diff<7) return d.toLocaleDateString([],{weekday:'short'});
+  if(diff<365) return d.toLocaleDateString([],{day:'numeric',month:'short'});
+  return d.toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'});
 }
-function cleanSnippet(s) { return s.replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/[\u200B-\u200DFEFF]/g,'').trim(); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function clean(s){ return s.replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/[\u200B-\u200DFEFF]/g,'').trim(); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function extractBody(payload){
+  if(!payload) return '';
+  if(payload.body?.data) return atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+  if(payload.parts){
+    const plain=payload.parts.find(p=>p.mimeType==='text/plain');
+    if(plain?.body?.data) return atob(plain.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+    for(const p of payload.parts){ const s=extractBody(p); if(s) return s; }
+  }
+  return payload.snippet||'';
+}
 let toastT;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 3000);
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),3500); }
+
+// ── Label Refresh ─────────────────────────────────────────────────────────────
+const LABEL_RULES = [
+  { pattern: /googlenews-noreply@google\.com/i,         label: 'News' },
+  { pattern: /newsletter\.afr\.com|updates@newsletter\.afr/i, label: 'News' },
+  { pattern: /beyond.*gantt|substack/i,                 label: 'News' },
+  { pattern: /theguardian|guardian\.com/i,              label: 'News' },
+  { pattern: /seek\.com\.au|noreply@s\.seek|jobmail@s\.seek/i, label: 'Jobs Jenni' },
+  { pattern: /immigration\.gov\.vn|vnpay|vietnam.*visa/i, label: 'Holiday Vietnam' },
+  { pattern: /thredbo|covermore|cover-more|qantas\.com\.au|americanairlines|airbnb/i, label: 'Holiday' },
+  { pattern: /amazon\.com\.au|woolworths|eufy|edm\.eufy|anker|ebay|chemist.*warehouse/i, label: 'Shopping' },
+  { pattern: /moonpig/i,                                label: 'Family' },
+  { pattern: /reminders@email\.moonpig/i,               label: 'Shopping' },
+  { pattern: /bandsintown|tegdainty|boney.*m|deep.*purple|farnham|trucksales|gretavanfleet/i, label: 'Music' },
+  { pattern: /charlottenelson/i,                        label: 'Family' },
+  { pattern: /optus|latitude.*financial|linkt|dropbox.*calendar|qantas.*pay|service\.nsw|transport.*nsw|ace.*garage|revenue.*nsw/i, label: 'Bill' },
+  { pattern: /nab@|clearscore|macquarie|ing\.com|lloyds|smartmonday|quinnfp|quinn/i, label: 'Finance' },
+  { pattern: /walkerlawgroup/i,                         label: 'Workers Comp' },
+  { pattern: /claude\.ai|anthropic|openai|surfshark|iphonelife|nrl\.com|reddit.*password|microsoft.*job|facebook.*code|no-reply@accounts\.google\.com|no-reply@google\.com|seapeopleapp/i, label: 'Technology' },
+  { pattern: /health\.nsw|specsavers|hotdoc|psychiatr|meddoc|forestfamilypractice/i, label: 'Health' },
+  { pattern: /planview|screenshot.*planview/i,          label: 'Work' },
+  { pattern: /making.*waves|orc.*sail|offshore.*racing/i, label: 'Sailing' },
+  { pattern: /aegon|pension.*uk/i,                      label: 'Pension UK - Aegon' },
+  { pattern: /calendar.*notification|google.*calendar/i, label: 'Calendar event' },
+  { pattern: /carsales|blackvue|joblistify|turoo|instagram.*promo|maptek|anylist|pizzariccardo|pizza.*riccardo/i, label: null }, // TRASH
+];
+
+const LABEL_NAME_TO_ID = {
+  'News':               'Label_2463225475707470174',
+  'Jobs Jenni':         'Label_805230922777097013',
+  'Holiday Vietnam':    'Label_791703868379029115',
+  'Holiday':            'Label_5422643364044618323',
+  'Shopping':           'Label_1063679665430947125',
+  'Music':              'Label_7378421052090047179',
+  'Family':             'Label_1996254530682183484',
+  'Bill':               'Label_6035990152513784074',
+  'Finance':            'Label_35',
+  'Technology':         'Label_3069034851973135286',
+  'Health':             'Label_7323047852552588863',
+  'Work':               'Label_9047548254714955279',
+  'Sailing':            'Label_14',
+  'Workers Comp':       'Label_5307757318324514926',
+  'Pension UK - Aegon': 'Label_585759915115591443',
+  'Calendar event':     'Label_7861096440641771906',
+  'Friends':            'Label_3638975555762862381',
+  'House Hunting':      'Label_377076489294141763',
+};
+
+function guessLabel(sender, subject) {
+  const text = `${sender} ${subject}`;
+  for (const rule of LABEL_RULES) {
+    if (rule.pattern.test(text)) return rule.label === null ? 'TRASH' : rule.label;
+  }
+  return null;
+}
+
+// Modal for review
+let pendingUnknowns = [];
+let refreshModal = null;
+
+async function runLabelRefresh() {
+  toast('Scanning for unlabelled emails…');
+  try {
+    // Fetch unlabelled inbox threads
+    const data = await api('/gmail/v1/users/me/threads?q=in:inbox%20has:nouserlabels&maxResults=50');
+    const threads = data.threads || [];
+    if (!threads.length) { toast('✓ No unlabelled emails found!'); return; }
+
+    toast(`Found ${threads.length} unlabelled threads — classifying…`);
+    const detailed = await Promise.all(threads.map(t =>
+      api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From`).catch(() => ({ id: t.id, messages: [] }))
+    ));
+
+    const autoApply = [], unknowns = [];
+    detailed.forEach(thread => {
+      const msgs = thread.messages || [];
+      const last = msgs[msgs.length - 1] || {};
+      const h = hdrs(last);
+      const sender = h.From || '';
+      const subject = h.Subject || '';
+      const guessed = guessLabel(sender, subject);
+      if (guessed) autoApply.push({ thread, guessed, sender, subject });
+      else unknowns.push({ thread, sender, subject });
+    });
+
+    // Auto-apply confident ones
+    let applied = 0;
+    for (const { thread, guessed } of autoApply) {
+      try {
+        if (guessed === 'TRASH') {
+          await api(`/gmail/v1/users/me/threads/${thread.id}/trash`, { method: 'POST' });
+        } else {
+          const labelId = LABEL_NAME_TO_ID[guessed];
+          if (labelId) await api(`/gmail/v1/users/me/threads/${thread.id}/modify`, { method: 'POST', body: JSON.stringify({ addLabelIds: [labelId] }) });
+        }
+        applied++;
+      } catch(e) {}
+    }
+
+    if (unknowns.length) {
+      pendingUnknowns = unknowns;
+      showReviewModal(applied, unknowns);
+    } else {
+      toast(`✓ Done! ${applied} thread${applied !== 1 ? 's' : ''} labelled automatically.`);
+      setTimeout(() => refreshCurrentView(), 1000);
+    }
+  } catch(e) {
+    toast('⚠️ Label refresh failed — check connection');
+  }
+}
+
+function showReviewModal(autoCount, unknowns) {
+  // Remove existing modal
+  document.getElementById('refresh-modal')?.remove();
+  const labelOptions = Object.keys(LABEL_NAME_TO_ID).map(n => `<option value="${n}">${n}</option>`).join('');
+  const rows = unknowns.map((u, i) => `
+    <div class="review-row" id="rrow-${i}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(shortFrom(u.sender))}</div>
+        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.subject||'(no subject)')}</div>
+      </div>
+      <select id="rsel-${i}" style="padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:var(--surface);color:var(--text);max-width:130px;">
+        <option value="">Skip</option>
+        ${labelOptions}
+        <option value="TRASH">🗑 Trash</option>
+      </select>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'refresh-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:12px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">Label Refresh Complete</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">✓ ${autoCount} auto-labelled · ${unknowns.length} need your input</div>
+        </div>
+        <button onclick="closeReviewModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 16px;">${rows}</div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="closeReviewModal()" style="padding:7px 14px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);cursor:pointer;color:var(--text2);">Done</button>
+        <button onclick="applyReviewLabels()" style="padding:7px 14px;border:none;border-radius:6px;font-size:12px;background:#1E293B;cursor:pointer;color:#fff;font-weight:600;">Apply selected labels</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function applyReviewLabels() {
+  let count = 0;
+  for (let i = 0; i < pendingUnknowns.length; i++) {
+    const sel = document.getElementById(`rsel-${i}`)?.value;
+    if (!sel) continue;
+    const thread = pendingUnknowns[i].thread;
+    try {
+      if (sel === 'TRASH') {
+        await api(`/gmail/v1/users/me/threads/${thread.id}/trash`, { method: 'POST' });
+      } else {
+        const labelId = LABEL_NAME_TO_ID[sel];
+        if (labelId) await api(`/gmail/v1/users/me/threads/${thread.id}/modify`, { method: 'POST', body: JSON.stringify({ addLabelIds: [labelId] }) });
+      }
+      document.getElementById(`rrow-${i}`)?.remove();
+      count++;
+    } catch(e) {}
+  }
+  toast(`✓ ${count} thread${count !== 1 ? 's' : ''} labelled`);
+  closeReviewModal();
+  setTimeout(() => refreshCurrentView(), 800);
+}
+
+function closeReviewModal() {
+  document.getElementById('refresh-modal')?.remove();
+  pendingUnknowns = [];
 }
 </script>
 </body>

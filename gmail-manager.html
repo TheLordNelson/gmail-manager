@@ -395,25 +395,88 @@ function selectLabel(id, name, btn) {
 }
 
 // ── Thread loading ────────────────────────────────────────────────────────────
+let nextPageToken = null; // tracks pagination state
+
 function setLoading() {
   document.getElementById('thread-list').innerHTML='<div class="loading"><div class="spinner"></div>Loading…</div>';
   document.getElementById('thread-meta').textContent='';
+  nextPageToken = null;
 }
 
-async function fetchThreads(query, maxResults=50) {
-  const data = await api(`/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
-  const threads = data.threads||[];
+function updateMeta() {
+  const base = `${currentThreads.length} threads`;
+  document.getElementById('thread-meta').textContent = nextPageToken ? `${base} (more available)` : base;
+}
+
+async function fetchThreadsBatch(query, pageToken=null) {
+  let url = `/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=50`;
+  if (pageToken) url += `&pageToken=${pageToken}`;
+  const data = await api(url);
+  const threads = data.threads || [];
   const detailed = await Promise.all(threads.map(t=>
     api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
   ));
-  return detailed;
+  return { threads: detailed, nextPageToken: data.nextPageToken || null };
+}
+
+async function fetchLabelBatch(labelId, pageToken=null) {
+  let url = `/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`;
+  if (pageToken) url += `&pageToken=${pageToken}`;
+  const data = await api(url);
+  const threads = data.threads || [];
+  const detailed = await Promise.all(threads.map(t=>
+    api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
+  ));
+  return { threads: detailed, nextPageToken: data.nextPageToken || null };
+}
+
+function addLoadMoreButton() {
+  const list = document.getElementById('thread-list');
+  const existing = list.querySelector('.load-more-btn');
+  if (existing) existing.remove();
+  if (!nextPageToken) return;
+  const btn = document.createElement('button');
+  btn.className='load-more-btn';
+  btn.style.cssText='display:block;width:calc(100% - 20px);margin:10px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;color:var(--text2);';
+  btn.textContent='Load more…';
+  btn.onclick = () => loadMore();
+  list.appendChild(btn);
+}
+
+async function loadMore() {
+  if (!nextPageToken) return;
+  const btn = document.querySelector('.load-more-btn');
+  if (btn) { btn.textContent='Loading…'; btn.disabled=true; }
+  try {
+    let result;
+    if (currentView==='all') result = await fetchThreadsBatch('in:inbox', nextPageToken);
+    else if (currentView==='unread') result = await fetchThreadsBatch('in:inbox is:unread', nextPageToken);
+    else if (currentView==='grouped') result = await fetchLabelBatch('INBOX', nextPageToken);
+    else if (currentView==='label' && currentLabelId) result = await fetchLabelBatch(currentLabelId, nextPageToken);
+    else return;
+    nextPageToken = result.nextPageToken;
+    currentThreads = [...currentThreads, ...result.threads];
+    updateMeta();
+    // Append rows (flat views) or re-render (grouped)
+    if (currentView==='grouped') {
+      renderGrouped(currentThreads);
+    } else {
+      const list = document.getElementById('thread-list');
+      const oldBtn = list.querySelector('.load-more-btn');
+      if (oldBtn) oldBtn.remove();
+      result.threads.sort((a,b)=>getDate(b)-getDate(a)).forEach(t=>list.appendChild(makeThreadRow(t)));
+      addLoadMoreButton();
+    }
+  } catch(e) { toast('Failed to load more'); if(btn){btn.textContent='Load more…';btn.disabled=false;} }
 }
 
 async function loadAllInbox() {
   setLoading();
   try {
-    currentThreads = await fetchThreads('in:inbox');
-    document.getElementById('thread-meta').textContent=`${currentThreads.length} threads`;
+    const result = await fetchThreadsBatch('in:inbox');
+    currentThreads = result.threads;
+    nextPageToken = result.nextPageToken;
+    updateMeta();
     renderFlat(currentThreads);
   } catch(e){ showEmpty('Failed to load inbox'); }
 }
@@ -421,8 +484,10 @@ async function loadAllInbox() {
 async function loadUnread() {
   setLoading();
   try {
-    currentThreads = await fetchThreads('in:inbox is:unread');
-    document.getElementById('thread-meta').textContent=`${currentThreads.length} unread`;
+    const result = await fetchThreadsBatch('in:inbox is:unread');
+    currentThreads = result.threads;
+    nextPageToken = result.nextPageToken;
+    updateMeta();
     renderFlat(currentThreads);
   } catch(e){ showEmpty('Failed to load'); }
 }
@@ -430,15 +495,13 @@ async function loadUnread() {
 async function loadLabelThreads(labelId) {
   setLoading();
   try {
-    const data = await api(`/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`);
-    const threads = data.threads||[];
+    const result = await fetchLabelBatch(labelId);
+    currentThreads = result.threads;
+    nextPageToken = result.nextPageToken;
     const cnt = document.getElementById('cnt-'+labelId);
-    if(cnt) cnt.textContent=threads.length;
-    document.getElementById('thread-meta').textContent=`${threads.length} threads`;
-    if(!threads.length){ showEmpty('No emails with this label'); return; }
-    currentThreads = await Promise.all(threads.map(t=>
-      api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
-    ));
+    if(cnt) cnt.textContent = currentThreads.length + (nextPageToken?'+':'');
+    updateMeta();
+    if(!currentThreads.length){ showEmpty('No emails with this label'); return; }
     renderFlat(currentThreads);
   } catch(e){ showEmpty('Failed to load'); }
 }
@@ -446,14 +509,11 @@ async function loadLabelThreads(labelId) {
 async function loadGroupedInbox() {
   setLoading();
   try {
-    // Fetch all inbox threads
-    const data = await api(`/gmail/v1/users/me/threads?labelIds=INBOX&maxResults=50`);
-    const threads = data.threads||[];
-    document.getElementById('thread-meta').textContent=`${threads.length} threads`;
-    if(!threads.length){ showEmpty('Inbox is empty'); return; }
-    currentThreads = await Promise.all(threads.map(t=>
-      api(`/gmail/v1/users/me/threads/${t.id}?format=METADATA&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`).catch(()=>({id:t.id,messages:[]}))
-    ));
+    const result = await fetchLabelBatch('INBOX');
+    currentThreads = result.threads;
+    nextPageToken = result.nextPageToken;
+    updateMeta();
+    if(!currentThreads.length){ showEmpty('Inbox is empty'); return; }
     renderGrouped(currentThreads);
   } catch(e){ showEmpty('Failed to load'); }
 }
@@ -464,6 +524,7 @@ function renderFlat(threads) {
   list.innerHTML='';
   const sorted = [...threads].sort((a,b)=>getDate(b)-getDate(a));
   sorted.forEach(t=>list.appendChild(makeThreadRow(t)));
+  addLoadMoreButton();
 }
 
 function renderGrouped(threads) {
@@ -503,6 +564,7 @@ function renderGrouped(threads) {
   if(noLabel.length){
     list.appendChild(makeGroupSection('__none','Unlabelled','📭',noLabel));
   }
+  addLoadMoreButton();
 }
 
 function collapseAllGroups() {

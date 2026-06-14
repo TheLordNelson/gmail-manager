@@ -100,6 +100,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* Group header */
 .group-header { display:flex; align-items:center; gap:6px; padding:6px 10px; background:var(--bg); border-bottom:1px solid var(--border); cursor:pointer; position:sticky; top:0; z-index:2; user-select:none; }
 .group-header:hover { background:#E8EAF0; }
+.group-header input[type=checkbox] { cursor:pointer; pointer-events:all; position:relative; z-index:3; }
 .group-chevron { font-size:10px; color:var(--text3); transition:transform 0.2s; flex-shrink:0; }
 .group-chevron.collapsed { transform:rotate(-90deg); }
 .group-emoji { font-size:13px; }
@@ -539,20 +540,16 @@ function makeGroupSection(groupId, name, emoji, threads) {
   const hdr = document.createElement('div');
   hdr.className='group-header';
 
-  // ① Checkbox — built as DOM node so onclick closure is preserved
+  // ① Checkbox
   const groupCb = document.createElement('input');
   groupCb.type='checkbox';
   groupCb.className='group-cb';
   groupCb.style.cssText='width:13px;height:13px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;margin-right:2px;';
   groupCb.title='Select all in group';
-  groupCb.addEventListener('click', e=>{
+  // Use 'change' not 'click' — more reliable, fires after checked state is set
+  groupCb.addEventListener('change', e=>{
     e.stopPropagation();
-    // groupCb.checked is already toggled by browser before this fires
-    if(groupCb.checked) {
-      threadIds.forEach(id=>selected.add(id));
-    } else {
-      threadIds.forEach(id=>selected.delete(id));
-    }
+    threadIds.forEach(id=>{ if(groupCb.checked) selected.add(id); else selected.delete(id); });
     updateSel();
   });
 
@@ -591,9 +588,9 @@ function makeGroupSection(groupId, name, emoji, threads) {
   const body = document.createElement('div');
   body.className='group-body'+(isCollapsed?' collapsed':'');
 
-  // Toggle collapse on header click (but not on checkbox)
+  // Collapse/expand on header click — skip if clicking the checkbox
   hdr.addEventListener('click', e=>{
-    if(e.target===groupCb) return;
+    if(e.target.type==='checkbox') return;
     const collapsed=body.classList.toggle('collapsed');
     chevron.classList.toggle('collapsed', collapsed);
     if(collapsed) collapsedGroups.add(groupId); else collapsedGroups.delete(groupId);

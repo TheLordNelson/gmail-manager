@@ -409,8 +409,8 @@ function updateMeta() {
 }
 
 async function fetchThreadsBatch(query, pageToken=null) {
-  let url = `/gmail/v1/users/me/threads?q=${encodeURIComponent(query)}&maxResults=50`;
-  if (pageToken) url += `&pageToken=${pageToken}`;
+  let url = `/gmail/v1/users/me/threads?maxResults=50&q=${encodeURIComponent(query)}`;
+  if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
   const data = await api(url);
   const threads = data.threads || [];
   const detailed = await Promise.all(threads.map(t=>
@@ -420,8 +420,16 @@ async function fetchThreadsBatch(query, pageToken=null) {
 }
 
 async function fetchLabelBatch(labelId, pageToken=null) {
-  let url = `/gmail/v1/users/me/threads?labelIds=${labelId}&maxResults=50`;
-  if (pageToken) url += `&pageToken=${pageToken}`;
+  // Use q= with label: prefix for user labels, labelIds= for system labels
+  const sysLabels = ['INBOX','SENT','SPAM','TRASH','STARRED','IMPORTANT','UNREAD','DRAFT'];
+  let url;
+  if (sysLabels.includes(labelId)) {
+    url = `/gmail/v1/users/me/threads?maxResults=50&labelIds=${encodeURIComponent(labelId)}`;
+  } else {
+    // For user labels use labelIds param — it works with label IDs not names
+    url = `/gmail/v1/users/me/threads?maxResults=50&labelIds=${encodeURIComponent(labelId)}`;
+  }
+  if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
   const data = await api(url);
   const threads = data.threads || [];
   const detailed = await Promise.all(threads.map(t=>
@@ -437,8 +445,8 @@ function addLoadMoreButton() {
   if (!nextPageToken) return;
   const btn = document.createElement('button');
   btn.className='load-more-btn';
-  btn.style.cssText='display:block;width:calc(100% - 20px);margin:10px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;color:var(--text2);';
-  btn.textContent='Load more…';
+  btn.style.cssText='display:block;width:calc(100% - 20px);margin:10px auto;padding:10px;background:#1E293B;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:#E2E8F0;text-align:center;';
+  btn.textContent='⬇ Load more emails…';
   btn.onclick = () => loadMore();
   list.appendChild(btn);
 }
@@ -503,7 +511,10 @@ async function loadLabelThreads(labelId) {
     updateMeta();
     if(!currentThreads.length){ showEmpty('No emails with this label'); return; }
     renderFlat(currentThreads);
-  } catch(e){ showEmpty('Failed to load'); }
+  } catch(e){
+    console.error('loadLabelThreads error:', e);
+    showEmpty('Failed to load: ' + (e.message||'unknown error'));
+  }
 }
 
 async function loadGroupedInbox() {

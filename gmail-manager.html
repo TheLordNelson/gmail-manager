@@ -530,42 +530,72 @@ function makeGroupSection(groupId, name, emoji, threads) {
   const isCollapsed = collapsedGroups.has(groupId);
   const unread = threads.filter(t=>{const l=t.messages?.[t.messages.length-1]; return (l?.labelIds||[]).includes('UNREAD');}).length;
   const threadIds = threads.map(t=>t.id);
+
   const wrap = document.createElement('div');
   wrap.className='group-section';
   wrap.dataset.groupId=groupId;
+  wrap.dataset.threadIds=JSON.stringify(threadIds);
 
   const hdr = document.createElement('div');
   hdr.className='group-header';
 
-  // Group checkbox
+  // ① Checkbox — built as DOM node so onclick closure is preserved
   const groupCb = document.createElement('input');
   groupCb.type='checkbox';
   groupCb.className='group-cb';
-  groupCb.style.cssText='width:13px;height:13px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;';
+  groupCb.style.cssText='width:13px;height:13px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;margin-right:2px;';
   groupCb.title='Select all in group';
-  groupCb.onclick = e => {
+  groupCb.addEventListener('click', e=>{
     e.stopPropagation();
-    if(groupCb.checked) threadIds.forEach(id=>selected.add(id));
-    else threadIds.forEach(id=>selected.delete(id));
+    // groupCb.checked is already toggled by browser before this fires
+    if(groupCb.checked) {
+      threadIds.forEach(id=>selected.add(id));
+    } else {
+      threadIds.forEach(id=>selected.delete(id));
+    }
     updateSel();
-  };
+  });
 
+  // ② Chevron
   const chevron = document.createElement('span');
   chevron.className='group-chevron'+(isCollapsed?' collapsed':'');
   chevron.textContent='▼';
 
+  // ③ Emoji
+  const emojiEl = document.createElement('span');
+  emojiEl.className='group-emoji';
+  emojiEl.textContent=emoji;
+
+  // ④ Name
+  const nameEl = document.createElement('span');
+  nameEl.className='group-name';
+  nameEl.textContent=name;
+
+  // ⑤ Unread badge
+  const unreadEl = document.createElement('span');
+  unreadEl.className='group-unread';
+  unreadEl.textContent=unread>0?`${unread} unread`:'';
+
+  // ⑥ Count badge
+  const countEl = document.createElement('span');
+  countEl.className='group-count';
+  countEl.textContent=threads.length;
+
   hdr.appendChild(groupCb);
   hdr.appendChild(chevron);
-  hdr.innerHTML += `<span class="group-emoji">${emoji}</span><span class="group-name">${esc(name)}</span>${unread>0?`<span class="group-unread">${unread} unread</span>`:''}<span class="group-count">${threads.length}</span>`;
+  hdr.appendChild(emojiEl);
+  hdr.appendChild(nameEl);
+  if(unread>0) hdr.appendChild(unreadEl);
+  hdr.appendChild(countEl);
 
   const body = document.createElement('div');
   body.className='group-body'+(isCollapsed?' collapsed':'');
 
-  // Toggle collapse on header click (not checkbox)
+  // Toggle collapse on header click (but not on checkbox)
   hdr.addEventListener('click', e=>{
     if(e.target===groupCb) return;
     const collapsed=body.classList.toggle('collapsed');
-    hdr.querySelector('.group-chevron').classList.toggle('collapsed',collapsed);
+    chevron.classList.toggle('collapsed', collapsed);
     if(collapsed) collapsedGroups.add(groupId); else collapsedGroups.delete(groupId);
   });
 
@@ -630,15 +660,16 @@ function updateSel() {
   document.getElementById('action-bar').classList.toggle('visible',n>0);
   document.getElementById('select-all-btn').textContent=n===currentThreads.length&&n>0?'Deselect all':'Select all';
   refreshRows();
-  // Sync group checkboxes
+  // Sync group checkboxes using stored threadIds (works even when group is collapsed)
   document.querySelectorAll('.group-section').forEach(sec=>{
     const cb=sec.querySelector('.group-cb');
     if(!cb) return;
-    const rows=sec.querySelectorAll('.t-row');
-    const ids=[...rows].map(r=>r.dataset.id);
-    const allSel=ids.length>0&&ids.every(id=>selected.has(id));
+    const ids=JSON.parse(sec.dataset.threadIds||'[]');
+    if(!ids.length) return;
+    const allSel=ids.every(id=>selected.has(id));
+    const anySel=ids.some(id=>selected.has(id));
     cb.checked=allSel;
-    cb.indeterminate=!allSel&&ids.some(id=>selected.has(id));
+    cb.indeterminate=!allSel&&anySel;
   });
 }
 function refreshRows() {

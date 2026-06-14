@@ -245,7 +245,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="act-btn archive" onclick="bulkAction('archive')">Archive</button>
         <button class="act-btn trash" onclick="bulkAction('trash')">Trash</button>
         <button class="act-btn relabel" onclick="document.getElementById('relabel-sel').classList.toggle('visible')">Label ▾</button>
-        <select id="relabel-sel" onchange="bulkAction('relabel',this.value);this.classList.remove('visible');this.value=''">
+        <select id="relabel-sel" onchange="if(this.value){bulkAction('relabel',this.value);}">
           <option value="">Add label…</option>
         </select>
       </div>
@@ -440,15 +440,17 @@ async function fetchLabelBatch(labelId, pageToken=null) {
 
 function addLoadMoreButton() {
   const list = document.getElementById('thread-list');
-  const existing = list.querySelector('.load-more-btn');
-  if (existing) existing.remove();
+  document.querySelectorAll('.load-more-btn').forEach(b=>b.remove());
   if (!nextPageToken) return;
   const btn = document.createElement('button');
   btn.className='load-more-btn';
-  btn.style.cssText='display:block;width:calc(100% - 20px);margin:10px auto;padding:10px;background:#1E293B;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:#E2E8F0;text-align:center;';
+  btn.style.cssText='display:block;width:100%;padding:10px;background:#1E293B;border:none;border-bottom:2px solid #334155;font-size:12px;font-weight:600;cursor:pointer;color:#86EFAC;text-align:center;position:sticky;top:0;z-index:3;';
   btn.textContent='⬇ Load more emails…';
   btn.onclick = () => loadMore();
-  list.appendChild(btn);
+  // Insert at top of list, after toolbar if present
+  const toolbar = list.querySelector('div[style*="Collapse"]') || list.querySelector('.group-toolbar');
+  if (toolbar) toolbar.after(btn);
+  else list.prepend(btn);
 }
 
 async function loadMore() {
@@ -754,15 +756,72 @@ function refreshRows() {
 }
 
 // ── Bulk actions ──────────────────────────────────────────────────────────────
-async function bulkAction(action, labelId) {
+const ACTION_LABELS = { read:'Mark as read', unread:'Mark as unread', archive:'Archive', trash:'Move to Trash', relabel:'Add label' };
+const ACTION_COLORS = { read:'#1E3A5F', unread:'#1E3A5F', archive:'#334155', trash:'#7F1D1D', relabel:'#1A2E1A' };
+const ACTION_TEXT   = { read:'#93C5FD', unread:'#93C5FD', archive:'#CBD5E1', trash:'#FCA5A5', relabel:'#86EFAC' };
+
+function bulkAction(action, labelId) {
   const ids=[...selected]; if(!ids.length) return;
   document.getElementById('relabel-sel').classList.remove('visible');
+  document.getElementById('relabel-sel').value='';
+
+  // Build label name for display
+  const labelName = labelId ? (allLabels.find(l=>l.id===labelId)?.name?.split('/').pop() || labelId) : '';
+  const actionDesc = ACTION_LABELS[action] + (labelName ? ` → ${labelName}` : '');
+
+  // Get sender+subject for each selected thread for the preview
+  const previews = currentThreads
+    .filter(t=>ids.includes(t.id))
+    .map(t=>{
+      const msgs=t.messages||[]; const last=msgs[msgs.length-1]||{};
+      const h=hdrs(last);
+      return `<div style="padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:baseline;">
+        <span style="font-size:11px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(shortFrom(h.From||''))}</span>
+        <span style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${esc(h.Subject||'(no subject)')}</span>
+      </div>`;
+    }).join('');
+
+  // Remove any existing confirm modal
+  document.getElementById('confirm-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id='confirm-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);">Confirm action</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${esc(actionDesc)} · <strong>${ids.length}</strong> thread${ids.length!==1?'s':''}</div>
+        </div>
+        <button onclick="document.getElementById('confirm-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:8px 16px;max-height:50vh;">
+        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Emails that will be affected</div>
+        ${previews}
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="document.getElementById('confirm-modal').remove()" 
+          style="padding:8px 16px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--surface2);cursor:pointer;color:var(--text2);font-weight:500;">
+          Cancel
+        </button>
+        <button onclick="document.getElementById('confirm-modal').remove();executeBulkAction('${action}','${labelId||''}')"
+          style="padding:8px 16px;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:${ACTION_COLORS[action]};color:${ACTION_TEXT[action]};">
+          Confirm — ${esc(actionDesc)}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function executeBulkAction(action, labelId) {
+  const ids=[...selected]; if(!ids.length) return;
   toast(`Applying to ${ids.length} thread${ids.length>1?'s':''}…`);
   try {
-    await Promise.all(ids.map(id=>doAction(id,action,labelId)));
-    toast(`✓ ${ids.length} thread${ids.length>1?'s':''} updated`);
+    await Promise.all(ids.map(id=>doAction(id, action, labelId||null)));
     clearSel();
-    setTimeout(()=>refreshCurrentView(), 800);
+    toast(`✓ ${ids.length} thread${ids.length>1?'s':''} updated — reloading…`);
+    setTimeout(()=>refreshCurrentView(), 1500);
   } catch(e){ toast('⚠️ Some actions failed'); }
 }
 async function doAction(threadId, action, labelId) {

@@ -874,9 +874,11 @@ async function openThread(threadId, basicHeaders) {
     document.getElementById('reading-from').textContent=firstH.From||'';
     document.getElementById('reading-date').textContent=firstH.Date||'';
 
-    // Collect all unique user label IDs across all messages in the thread
+    // Collect all unique label IDs — user labels + INBOX + STARRED
+    const SHOW_SYSTEM = ['INBOX','STARRED','IMPORTANT'];
     const threadLabelIds = [...new Set(
       msgs.flatMap(m=>(m.labelIds||[]).filter(id=>{
+        if (SHOW_SYSTEM.includes(id)) return true;
         const lbl=allLabels.find(l=>l.id===id);
         return lbl && lbl.type==='user';
       }))
@@ -960,19 +962,52 @@ function renderReadingLabels(threadId, labelIds) {
   const container = document.getElementById('reading-labels');
   container.innerHTML = '';
 
-  // Existing label pills with × remove button
+  const SYSTEM_DISPLAY = {
+    'INBOX':     { name:'Inbox',     emoji:'📥', bg:'#F0FDF4', border:'#BBF7D0', text:'#166534' },
+    'STARRED':   { name:'Starred',   emoji:'⭐', bg:'#FFFBEB', border:'#FDE68A', text:'#92400E' },
+    'IMPORTANT': { name:'Important', emoji:'❗', bg:'#FFF7ED', border:'#FED7AA', text:'#9A3412' },
+  };
+
+  // Count user labels (non-system) so we can warn when removing the last one
+  const userLabelCount = labelIds.filter(id => !['INBOX','STARRED','IMPORTANT','UNREAD','SENT','DRAFT','SPAM','TRASH'].includes(id)).length;
+
   labelIds.forEach(lid => {
-    const lbl = allLabels.find(l=>l.id===lid);
-    if (!lbl) return;
-    const name = lbl.name.split('/').pop();
-    const emoji = EMOJI[name] || '🏷️';
+    const sys = SYSTEM_DISPLAY[lid];
+    let name, emoji, pillStyle;
+
+    if (sys) {
+      name = sys.name;
+      emoji = sys.emoji;
+      pillStyle = `display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:${sys.bg};border:1px solid ${sys.border};font-size:11px;color:${sys.text};font-weight:500;`;
+    } else {
+      const lbl = allLabels.find(l=>l.id===lid);
+      if (!lbl) return;
+      name = lbl.name.split('/').pop();
+      emoji = EMOJI[name] || '🏷️';
+      pillStyle = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:var(--accent-light);border:1px solid #BFDBFE;font-size:11px;color:var(--accent);font-weight:500;';
+    }
+
     const pill = document.createElement('span');
-    pill.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:var(--accent-light);border:1px solid #BFDBFE;font-size:11px;color:var(--accent);font-weight:500;';
-    pill.innerHTML = `${emoji} ${esc(name)} <button title="Remove label" style="background:none;border:none;cursor:pointer;color:#93C5FD;font-size:12px;padding:0 0 0 2px;line-height:1;" data-lid="${esc(lid)}">✕</button>`;
-    pill.querySelector('button').addEventListener('click', e => {
+    pill.style.cssText = pillStyle;
+
+    const label = document.createElement('span');
+    label.textContent = emoji + ' ' + name;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.title = lid === 'INBOX' ? 'Archive (remove from inbox)' : 'Remove label';
+    removeBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:12px;padding:0 0 0 3px;line-height:1;opacity:0.6;';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', e => {
       e.stopPropagation();
+      // Warn if removing from inbox when no user labels exist
+      if (lid === 'INBOX' && userLabelCount === 0) {
+        if (!confirm(`This email has no other labels. Removing from Inbox will archive it and it may be hard to find. Continue?`)) return;
+      }
       removeLabelFromThread(threadId, lid, labelIds);
     });
+
+    pill.appendChild(label);
+    pill.appendChild(removeBtn);
     container.appendChild(pill);
   });
 
@@ -986,7 +1021,7 @@ function renderReadingLabels(threadId, labelIds) {
   const dropdown = document.createElement('div');
   dropdown.style.cssText = 'display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:50;min-width:160px;max-height:220px;overflow-y:auto;';
 
-  // Only show labels not already applied
+  // Only show user labels not already applied
   const available = allLabels.filter(l => l.type==='user' && !labelIds.includes(l.id))
     .sort((a,b)=>a.name.localeCompare(b.name));
   available.forEach(lbl => {

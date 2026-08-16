@@ -17,6 +17,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* ── Auth ── */
 #auth-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:20px; padding:24px; text-align:center; }
+#app { display:none; flex:1; overflow:hidden; min-height:0; }
 #auth-screen h1 { font-size:26px; font-weight:700; }
 #auth-screen p { color:var(--text2); font-size:14px; max-width:300px; line-height:1.6; }
 .google-btn { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #dadce0; border-radius:8px; padding:12px 24px; font-size:15px; font-weight:500; cursor:pointer; box-shadow:var(--shadow); color:#3c4043; transition:box-shadow 0.15s; }
@@ -312,6 +313,7 @@ function signOut() {
 }
 
 window.onload = () => {
+  // Check for token returned from Google OAuth redirect
   const hash = new URLSearchParams(location.hash.slice(1));
   if (hash.get('access_token')) {
     token = hash.get('access_token');
@@ -320,10 +322,18 @@ window.onload = () => {
     history.replaceState(null,'',location.pathname);
     startApp(); return;
   }
+  // Check for valid stored token
   const stored = localStorage.getItem('gm_tok');
   const exp = parseInt(localStorage.getItem('gm_exp')||0);
-  if (stored && exp > Date.now()+60000) { token = stored; startApp(); return; }
+  if (stored && exp > Date.now() + 60000) {
+    token = stored;
+    startApp(); return;
+  }
+  // Clear any stale token and show auth screen
+  localStorage.removeItem('gm_tok');
+  localStorage.removeItem('gm_exp');
   document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
 };
 
 // ── API ───────────────────────────────────────────────────────────────────────

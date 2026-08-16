@@ -305,6 +305,20 @@ function signOut() {
   document.getElementById('auth-screen').style.display = 'flex';
 }
 
+// Safety net: Chrome iOS may fire hashchange instead of full reload on redirect
+window.addEventListener('hashchange', () => {
+  const rawHash = location.hash || location.href.split('#')[1] || '';
+  const hash = new URLSearchParams(rawHash.replace(/^#/,''));
+  if (hash.get('access_token')) {
+    token = hash.get('access_token');
+    const exp = Date.now() + parseInt(hash.get('expires_in') || 3600) * 1000;
+    localStorage.setItem('gm_tok', token);
+    localStorage.setItem('gm_exp', exp);
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+    startApp();
+  }
+});
+
 window.onload = () => {
   // Build auth URL
   const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
@@ -314,7 +328,6 @@ window.onload = () => {
     + '&scope=' + encodeURIComponent(SCOPES)
     + '&include_granted_scopes=true';
 
-  // Attach directly to button click — Chrome iOS requires handler on the element itself
   const btn = document.getElementById('signin-btn');
   if (btn) {
     btn.addEventListener('click', function() {
@@ -322,23 +335,30 @@ window.onload = () => {
     });
   }
 
-  // Check for token returned from Google OAuth redirect
-  const hash = new URLSearchParams(location.hash.slice(1));
+  // Parse token from hash — try both location.hash and the raw href
+  // Chrome iOS sometimes doesn't expose hash via location.hash properly
+  const rawHash = location.hash || location.href.split('#')[1] || '';
+  const hash = new URLSearchParams(rawHash.replace(/^#/,''));
+
   if (hash.get('access_token')) {
     token = hash.get('access_token');
+    const exp = Date.now() + parseInt(hash.get('expires_in') || 3600) * 1000;
     localStorage.setItem('gm_tok', token);
-    localStorage.setItem('gm_exp', Date.now() + parseInt(hash.get('expires_in')||3600)*1000);
-    history.replaceState(null,'',location.pathname);
+    localStorage.setItem('gm_exp', exp);
+    // Clear hash from URL without reload
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
     startApp(); return;
   }
-  // Check for valid stored token
+
+  // Check valid stored token
   const stored = localStorage.getItem('gm_tok');
-  const exp = parseInt(localStorage.getItem('gm_exp')||0);
-  if (stored && exp > Date.now() + 60000) {
+  const storedExp = parseInt(localStorage.getItem('gm_exp') || '0');
+  if (stored && storedExp > Date.now() + 60000) {
     token = stored;
     startApp(); return;
   }
-  // Clear any stale token and show auth screen
+
+  // No valid token — clear stale data and show auth
   localStorage.removeItem('gm_tok');
   localStorage.removeItem('gm_exp');
   document.getElementById('auth-screen').style.display = 'flex';

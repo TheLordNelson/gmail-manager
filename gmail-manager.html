@@ -352,6 +352,27 @@ let currentThreads = [], selected = new Set(), allLabels = [];
 let collapsedGroups = new Set();
 let activeThreadId = null;
 let currentOpenThreadId = null;
+let currentOpenMessageId = null;
+
+function openInGmail() {
+  if (currentOpenMessageId) {
+    const enc = encodeURIComponent(currentOpenMessageId);
+    // Try Gmail app deep link first (iOS), fall back to web search
+    const appUrl = `googlegmail:///mail/u/0/#search/rfc822msgid:${enc}`;
+    const webUrl = `https://mail.google.com/mail/u/0/#search/rfc822msgid:${enc}`;
+    // Attempt app deep link; if app not installed, browser ignores it
+    // Use iframe trick to try app without navigating away
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = appUrl;
+    document.body.appendChild(iframe);
+    setTimeout(() => { document.body.removeChild(iframe); }, 1500);
+    // Always open web fallback in new tab
+    window.open(webUrl, '_blank');
+  } else if (currentOpenThreadId) {
+    window.open(`https://mail.google.com/mail/u/0/#all/${currentOpenThreadId}`, '_blank');
+  }
+}
 
 // ── OAuth ─────────────────────────────────────────────────────────────────────
 function signIn() {
@@ -908,7 +929,9 @@ async function openThread(threadId, basicHeaders) {
   document.getElementById('reading-date').textContent='';
   // Mobile: open reading pane
   document.getElementById('reading-pane').classList.add('mobile-open');
+  // Store for open-in-Gmail
   currentOpenThreadId = threadId;
+  currentOpenMessageId = null;
   try {
     const data = await api(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
     const msgs = data.messages||[];
@@ -916,8 +939,8 @@ async function openThread(threadId, basicHeaders) {
     document.getElementById('reading-subject').textContent=firstH.Subject||'(no subject)';
     document.getElementById('reading-from').textContent=firstH.From||'';
     document.getElementById('reading-date').textContent=firstH.Date||'';
-    // Store Message-ID for open-in-Gmail
-    currentOpenMessageId = firstH['Message-ID'] || firstH['Message-Id'] || firstH['message-id'] || null;
+    // Capture Message-ID for open-in-Gmail
+    currentOpenMessageId = (firstH['Message-ID'] || firstH['Message-Id'] || firstH['message-id'] || '').replace(/[<>]/g,'').trim();
     // Collect labels from all messages: user labels + INBOX + STARRED
     const SHOW_SYS = ['INBOX','STARRED','IMPORTANT'];
     const threadLabelIds = [...new Set(
@@ -999,19 +1022,6 @@ function toggleMsgBody(headerEl) {
         iframe.style.height=Math.min(Math.max(h+20,60),650)+'px';
       } catch(e){}
     }
-  }
-}
-
-let currentOpenMessageId = null;
-
-function openInGmail() {
-  if (currentOpenMessageId) {
-    // Use Message-ID search — opens exact email on desktop Gmail
-    const encoded = encodeURIComponent(currentOpenMessageId.replace(/[<>]/g,'').trim());
-    window.open(`https://mail.google.com/mail/u/0/#search/rfc822msgid:${encoded}`, '_blank');
-  } else if (currentOpenThreadId) {
-    // Fallback: open Gmail and search by thread ID
-    window.open(`https://mail.google.com/mail/u/0/#all/${currentOpenThreadId}`, '_blank');
   }
 }
 

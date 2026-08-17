@@ -225,6 +225,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="sidebar-footer">
       <button id="label-refresh-btn" onclick="runLabelRefresh()" style="width:100%;padding:7px;background:#1E293B;border:none;border-radius:6px;font-size:11px;cursor:pointer;color:#86EFAC;margin-bottom:5px;font-weight:600;">🏷️ Run label refresh</button>
       <button id="refresh-labels-btn" onclick="loadLabels()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px;">↺ Refresh labels</button>
+      <button onclick="showAbout()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2);margin-bottom:5px;">ℹ️ About</button>
       <button id="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -282,6 +283,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<div id="about-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--surface);border-radius:16px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="background:#1E293B;padding:24px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">📬</div>
+      <div style="font-size:20px;font-weight:700;color:#F1F5F9;">Gmail Manager</div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:4px;">Your personal inbox command centre</div>
+    </div>
+    <div style="padding:20px 24px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;color:var(--text2);font-weight:600;">Version</td>
+          <td style="padding:8px 0;color:var(--text);text-align:right;" id="about-version"></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;color:var(--text2);font-weight:600;">Released</td>
+          <td style="padding:8px 0;color:var(--text);text-align:right;" id="about-date"></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;color:var(--text2);font-weight:600;">Account</td>
+          <td style="padding:8px 0;color:var(--text);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;" id="about-account"></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;color:var(--text2);font-weight:600;">Hosted on</td>
+          <td style="padding:8px 0;text-align:right;"><a href="https://github.com/TheLordNelson/gmail-manager" target="_blank" style="color:var(--accent);font-size:12px;">GitHub Pages ↗</a></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:var(--text2);font-weight:600;">Built with</td>
+          <td style="padding:8px 0;color:var(--text);text-align:right;">Gmail API · Claude AI</td>
+        </tr>
+      </table>
+      <div style="margin-top:16px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:11px;color:var(--text2);line-height:1.6;">
+        <strong style="color:var(--text);">Features</strong><br>
+        Browse by label · Grouped view · HTML email rendering · Bulk actions with confirmation · Label refresh · Add &amp; remove labels · Open in Gmail
+      </div>
+    </div>
+    <div style="padding:12px 24px 20px;text-align:center;">
+      <button onclick="closeAbout()" style="padding:9px 32px;background:#1E293B;color:#F1F5F9;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -289,7 +331,22 @@ const CLIENT_ID = '1090553100312-ls5st7kedh3h07l1tofbcn3b7epec2h4.apps.googleuse
 const REDIRECT_URI = 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
+const APP_VERSION = '1.7';
+const APP_DATE = '17 August 2026';
+
 const EMOJI = { News:'📰','Jobs Jenni':'💼','Holiday Vietnam':'🇻🇳',Holiday:'✈️',Shopping:'🛍️',Music:'🎵',Family:'👨‍👩‍👧',Bill:'💳',Finance:'💰',Technology:'💻',Health:'🏥',Work:'📊',Sailing:'⛵','Workers Comp':'⚖️','Pension UK - Aegon':'🏦','Calendar event':'📅',Friends:'👥','House Hunting':'🏠',INBOX:'📥',SENT:'📤',STARRED:'⭐',IMPORTANT:'❗',SPAM:'🚫' };
+
+// ── About ─────────────────────────────────────────────────────────────────────
+function showAbout() {
+  document.getElementById('about-version').textContent = 'v' + APP_VERSION;
+  document.getElementById('about-date').textContent = APP_DATE;
+  document.getElementById('about-account').textContent = document.getElementById('user-email').textContent || '—';
+  const modal = document.getElementById('about-modal');
+  modal.style.display = 'flex';
+}
+function closeAbout() {
+  document.getElementById('about-modal').style.display = 'none';
+}
 
 let token = null;
 let currentView = null, currentLabelId = null;

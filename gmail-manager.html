@@ -852,8 +852,8 @@ async function openThread(threadId, basicHeaders) {
   document.getElementById('reading-date').textContent='';
   // Mobile: open reading pane
   document.getElementById('reading-pane').classList.add('mobile-open');
-  // Set Gmail link immediately using thread ID
-  document.getElementById('open-in-gmail').href = `https://mail.google.com/mail/u/0/#all/${threadId}`;
+  // Gmail thread URL — #inbox/THREAD_ID opens the thread directly
+  document.getElementById('open-in-gmail').href = `https://mail.google.com/mail/u/0/#inbox/${threadId}`;
   try {
     const data = await api(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
     const msgs = data.messages||[];

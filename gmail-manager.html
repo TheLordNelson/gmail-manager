@@ -269,7 +269,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <div id="reading-from"></div>
             <div id="reading-date"></div>
             <div id="reading-actions">
-              <a id="open-in-gmail" href="#" target="_blank" class="r-act-btn" style="text-decoration:none;">↗ Open in Gmail</a>
+              <button id="open-in-gmail" class="r-act-btn" onclick="openInGmail()">↗ Open in Gmail</button>
               <button class="r-act-btn" onclick="replyCurrentThread()">↩ Reply</button>
               <button class="r-act-btn" onclick="archiveCurrentThread()">Archive</button>
               <button class="r-act-btn danger" onclick="trashCurrentThread()">🗑 Trash</button>
@@ -351,6 +351,7 @@ let currentView = null, currentLabelId = null;
 let currentThreads = [], selected = new Set(), allLabels = [];
 let collapsedGroups = new Set();
 let activeThreadId = null;
+let currentOpenThreadId = null;
 
 // ── OAuth ─────────────────────────────────────────────────────────────────────
 function signIn() {
@@ -907,8 +908,7 @@ async function openThread(threadId, basicHeaders) {
   document.getElementById('reading-date').textContent='';
   // Mobile: open reading pane
   document.getElementById('reading-pane').classList.add('mobile-open');
-  // Open in Gmail using thread ID search — works on mobile and desktop
-  document.getElementById('open-in-gmail').href = `https://mail.google.com/mail/u/0/#search/thread%3A${threadId}`;
+  currentOpenThreadId = threadId;
   try {
     const data = await api(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
     const msgs = data.messages||[];
@@ -916,6 +916,8 @@ async function openThread(threadId, basicHeaders) {
     document.getElementById('reading-subject').textContent=firstH.Subject||'(no subject)';
     document.getElementById('reading-from').textContent=firstH.From||'';
     document.getElementById('reading-date').textContent=firstH.Date||'';
+    // Store Message-ID for open-in-Gmail
+    currentOpenMessageId = firstH['Message-ID'] || firstH['Message-Id'] || firstH['message-id'] || null;
     // Collect labels from all messages: user labels + INBOX + STARRED
     const SHOW_SYS = ['INBOX','STARRED','IMPORTANT'];
     const threadLabelIds = [...new Set(
@@ -1000,8 +1002,23 @@ function toggleMsgBody(headerEl) {
   }
 }
 
+let currentOpenMessageId = null;
+
+function openInGmail() {
+  if (currentOpenMessageId) {
+    // Use Message-ID search — opens exact email on desktop Gmail
+    const encoded = encodeURIComponent(currentOpenMessageId.replace(/[<>]/g,'').trim());
+    window.open(`https://mail.google.com/mail/u/0/#search/rfc822msgid:${encoded}`, '_blank');
+  } else if (currentOpenThreadId) {
+    // Fallback: open Gmail and search by thread ID
+    window.open(`https://mail.google.com/mail/u/0/#all/${currentOpenThreadId}`, '_blank');
+  }
+}
+
 function closeReading() {
   activeThreadId=null;
+  currentOpenThreadId=null;
+  currentOpenMessageId=null;
   document.getElementById('reading-pane-empty').style.display='flex';
   document.getElementById('reading-content').classList.remove('visible');
   document.getElementById('reading-pane').classList.remove('mobile-open');

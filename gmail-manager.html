@@ -269,7 +269,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             <div id="reading-from"></div>
             <div id="reading-date"></div>
             <div id="reading-actions">
-              <button id="open-in-gmail" class="r-act-btn" onclick="openInGmail()">↗ Open in Gmail</button>
+              <a id="open-in-gmail" href="#" target="_blank" class="r-act-btn" style="text-decoration:none;">↗ Open in Gmail</a>
               <button class="r-act-btn" onclick="replyCurrentThread()">↩ Reply</button>
               <button class="r-act-btn" onclick="archiveCurrentThread()">Archive</button>
               <button class="r-act-btn danger" onclick="trashCurrentThread()">🗑 Trash</button>
@@ -331,7 +331,7 @@ const CLIENT_ID = '1090553100312-ls5st7kedh3h07l1tofbcn3b7epec2h4.apps.googleuse
 const REDIRECT_URI = 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.7';
 const APP_DATE = '17 August 2026';
 
 function showAbout() {
@@ -347,32 +347,11 @@ function closeAbout() {
 const EMOJI = { News:'📰','Jobs Jenni':'💼','Holiday Vietnam':'🇻🇳',Holiday:'✈️',Shopping:'🛍️',Music:'🎵',Family:'👨‍👩‍👧',Bill:'💳',Finance:'💰',Technology:'💻',Health:'🏥',Work:'📊',Sailing:'⛵','Workers Comp':'⚖️','Pension UK - Aegon':'🏦','Calendar event':'📅',Friends:'👥','House Hunting':'🏠',INBOX:'📥',SENT:'📤',STARRED:'⭐',IMPORTANT:'❗',SPAM:'🚫' };
 
 let token = null;
+let signedInEmail = '';
 let currentView = null, currentLabelId = null;
 let currentThreads = [], selected = new Set(), allLabels = [];
 let collapsedGroups = new Set();
 let activeThreadId = null;
-let currentOpenThreadId = null;
-let currentOpenMessageId = null;
-
-function openInGmail() {
-  if (currentOpenMessageId) {
-    const enc = encodeURIComponent(currentOpenMessageId);
-    // Try Gmail app deep link first (iOS), fall back to web search
-    const appUrl = `googlegmail:///mail/u/0/#search/rfc822msgid:${enc}`;
-    const webUrl = `https://mail.google.com/mail/u/0/#search/rfc822msgid:${enc}`;
-    // Attempt app deep link; if app not installed, browser ignores it
-    // Use iframe trick to try app without navigating away
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = appUrl;
-    document.body.appendChild(iframe);
-    setTimeout(() => { document.body.removeChild(iframe); }, 1500);
-    // Always open web fallback in new tab
-    window.open(webUrl, '_blank');
-  } else if (currentOpenThreadId) {
-    window.open(`https://mail.google.com/mail/u/0/#all/${currentOpenThreadId}`, '_blank');
-  }
-}
 
 // ── OAuth ─────────────────────────────────────────────────────────────────────
 function signIn() {
@@ -417,6 +396,7 @@ async function startApp() {
   try {
     const p = await api('https://www.googleapis.com/oauth2/v2/userinfo');
     document.getElementById('user-email').textContent = p.email||'';
+    signedInEmail = p.email||'';
     document.getElementById('user-avatar').innerHTML = p.picture ? `<img src="${p.picture}">` : (p.email||'?').slice(0,2).toUpperCase();
   } catch(e){}
   await loadLabels();
@@ -929,9 +909,8 @@ async function openThread(threadId, basicHeaders) {
   document.getElementById('reading-date').textContent='';
   // Mobile: open reading pane
   document.getElementById('reading-pane').classList.add('mobile-open');
-  // Store for open-in-Gmail
-  currentOpenThreadId = threadId;
-  currentOpenMessageId = null;
+  // Open in Gmail using thread ID search — works on mobile and desktop
+  document.getElementById('open-in-gmail').href = `https://mail.google.com/mail/u/0/#search/thread%3A${threadId}`;
   try {
     const data = await api(`/gmail/v1/users/me/threads/${threadId}?format=FULL`);
     const msgs = data.messages||[];
@@ -939,8 +918,6 @@ async function openThread(threadId, basicHeaders) {
     document.getElementById('reading-subject').textContent=firstH.Subject||'(no subject)';
     document.getElementById('reading-from').textContent=firstH.From||'';
     document.getElementById('reading-date').textContent=firstH.Date||'';
-    // Capture Message-ID for open-in-Gmail
-    currentOpenMessageId = (firstH['Message-ID'] || firstH['Message-Id'] || firstH['message-id'] || '').replace(/[<>]/g,'').trim();
     // Collect labels from all messages: user labels + INBOX + STARRED
     const SHOW_SYS = ['INBOX','STARRED','IMPORTANT'];
     const threadLabelIds = [...new Set(
@@ -1027,8 +1004,6 @@ function toggleMsgBody(headerEl) {
 
 function closeReading() {
   activeThreadId=null;
-  currentOpenThreadId=null;
-  currentOpenMessageId=null;
   document.getElementById('reading-pane-empty').style.display='flex';
   document.getElementById('reading-content').classList.remove('visible');
   document.getElementById('reading-pane').classList.remove('mobile-open');

@@ -317,6 +317,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <strong style="color:var(--text);">Features</strong><br>
         Browse by label · Grouped view · HTML email rendering · Bulk actions with confirmation · Label refresh · Add &amp; remove labels · Open in Gmail
       </div>
+      <div style="margin-top:10px;padding:10px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;font-size:11px;color:#166534;line-height:1.8;">
+        <strong style="color:#14532D;display:block;margin-bottom:4px;">✨ What's new in this version</strong>
+        <div id="about-changes"></div>
+      </div>
     </div>
     <div style="padding:12px 24px 20px;text-align:center;">
       <button onclick="closeAbout()" style="padding:9px 32px;background:#1E293B;color:#F1F5F9;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Close</button>
@@ -331,8 +335,8 @@ const CLIENT_ID = '1090553100312-ls5st7kedh3h07l1tofbcn3b7epec2h4.apps.googleuse
 const REDIRECT_URI = 'https://thelordnelson.github.io/gmail-manager/gmail-manager.html';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
-const APP_VERSION = '1.7';
-const APP_DATE = '17 August 2026';
+const APP_VERSION = '1.9';
+const APP_DATE = '22 August 2026';
 
 function showAbout() {
   document.getElementById('about-version').textContent = 'v' + APP_VERSION;
@@ -347,7 +351,6 @@ function closeAbout() {
 const EMOJI = { News:'📰','Jobs Jenni':'💼','Holiday Vietnam':'🇻🇳',Holiday:'✈️',Shopping:'🛍️',Music:'🎵',Family:'👨‍👩‍👧',Bill:'💳',Finance:'💰',Technology:'💻',Health:'🏥',Work:'📊',Sailing:'⛵','Workers Comp':'⚖️','Pension UK - Aegon':'🏦','Calendar event':'📅',Friends:'👥','House Hunting':'🏠',INBOX:'📥',SENT:'📤',STARRED:'⭐',IMPORTANT:'❗',SPAM:'🚫' };
 
 let token = null;
-let signedInEmail = '';
 let currentView = null, currentLabelId = null;
 let currentThreads = [], selected = new Set(), allLabels = [];
 let collapsedGroups = new Set();
@@ -355,7 +358,7 @@ let activeThreadId = null;
 
 // ── OAuth ─────────────────────────────────────────────────────────────────────
 function signIn() {
-  const p = new URLSearchParams({ client_id:CLIENT_ID, redirect_uri:REDIRECT_URI, response_type:'token', scope:SCOPES, include_granted_scopes:'true' });
+  const p = new URLSearchParams({ client_id:CLIENT_ID, redirect_uri:REDIRECT_URI, response_type:'token', scope:SCOPES, include_granted_scopes:'true', prompt:'select_account' });
   location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
 }
 function signOut() {
@@ -396,7 +399,6 @@ async function startApp() {
   try {
     const p = await api('https://www.googleapis.com/oauth2/v2/userinfo');
     document.getElementById('user-email').textContent = p.email||'';
-    signedInEmail = p.email||'';
     document.getElementById('user-avatar').innerHTML = p.picture ? `<img src="${p.picture}">` : (p.email||'?').slice(0,2).toUpperCase();
   } catch(e){}
   await loadLabels();
